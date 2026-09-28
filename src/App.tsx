@@ -135,8 +135,6 @@ export function App() {
                 return (
                     <MarketplaceView
                         onNavigate={handleNavigate}
-                        currentUser={currentUser}
-                        listPassportId={currentView === 'create-listing' ? viewParam : undefined}
                     />
                 );
             case 'listing-detail':
