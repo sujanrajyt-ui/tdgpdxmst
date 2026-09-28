@@ -1,0 +1,185 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "C:\\Users\\nagar\\OneDrive\\Pictures\\mstststs\\contracts\\AttestationRegistry.sol": {
+      "lastModificationDate": 1790607323858,
+      "contentHash": "9438bb83084793b1e083b832f3eab411",
+      "sourceName": "contracts/AttestationRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "AttestationRegistry"
+      ]
+    },
+    "C:\\Users\\nagar\\OneDrive\\Pictures\\mstststs\\contracts\\LifecycleRegistry.sol": {
+      "lastModificationDate": 1790607332992,
+      "contentHash": "dbd17e2ee5536654ba858a958bb96e88",
+      "sourceName": "contracts/LifecycleRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "LifecycleRegistry"
+      ]
+    },
+    "C:\\Users\\nagar\\OneDrive\\Pictures\\mstststs\\contracts\\OwnershipRegistry.sol": {
+      "lastModificationDate": 1790607316968,
+      "contentHash": "0a701d8771df01bb6bbf7aa1a8d120f9",
+      "sourceName": "contracts/OwnershipRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "OwnershipRegistry"
+      ]
+    },
+    "C:\\Users\\nagar\\OneDrive\\Pictures\\mstststs\\contracts\\ProductPassportRegistry.sol": {
+      "lastModificationDate": 1790607309146,
+      "contentHash": "0435f8b71362c11ae4c02733bc142918",
+      "sourceName": "contracts/ProductPassportRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ProductPassportRegistry"
+      ]
+    },
+    "C:\\Users\\nagar\\OneDrive\\Pictures\\mstststs\\contracts\\ServiceRegistry.sol": {
+      "lastModificationDate": 1790607330962,
+      "contentHash": "89e7c438200e9ab1504b830b4d8784ea",
+      "sourceName": "contracts/ServiceRegistry.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ServiceRegistry"
+      ]
+    }
+  }
+}
