@@ -381,7 +381,7 @@ const INITIAL_LISTINGS: MarketplaceListing[] = [
         currency: 'INR',
         location: 'Bangalore, KA',
         title: 'Apple MacBook Air M3 (15-inch, 16GB RAM) - Verifiable Mint Condition',
-        description: 'Selling my pristine MacBook Air M3. Identity and ownership verified on MST blockchain with full iCare replacement battery service history and TechCert 9.8/10 inspection score. AppleCare+ valid till 2028.',
+        description: 'Selling my pristine MacBook Air M3. Identity and ownership verified, with full iCare replacement battery service history and TechCert 9.8/10 inspection score. AppleCare+ valid till 2028.',
         status: 'ACTIVE',
         listedAt: '2026-09-20T12:00:00Z'
     },
@@ -395,7 +395,7 @@ const INITIAL_LISTINGS: MarketplaceListing[] = [
         price: 84500,
         currency: 'INR',
         location: 'Mumbai, MH',
-        title: 'iPhone 15 Pro Natural Titanium 128GB - MST Verified Ownership',
+        title: 'iPhone 15 Pro Natural Titanium 128GB - Ownership Verified',
         description: 'Clean phone, original box with matched IMEI attestation. Battery 93%. Transfer available instantly on Product Passport.',
         status: 'ACTIVE',
         listedAt: '2026-09-22T15:30:00Z'

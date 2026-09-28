@@ -60,7 +60,7 @@ export const MarketplaceView: React.FC<Props> = ({ onNavigate }) => {
                             Trusted Products with Persistent Identity
                         </h1>
                         <p className="text-sm text-[#5A4D44] font-sans leading-relaxed">
-                            Resale history survives every owner transition. Browse verified listings backed by MST Blockchain smart-contract escrow.
+                            Resale history follows each device through every owner. Browse listings with verified identity, recorded care, and protected handover.
                         </p>
                     </div>
 

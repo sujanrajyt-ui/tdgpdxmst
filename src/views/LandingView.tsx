@@ -1,185 +1,67 @@
 import React, { useState } from 'react';
-import { Shield, Search, ArrowRight, Lock, Layers, Sparkles } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Lock, Search, Shield, Sparkles } from 'lucide-react';
 import { AppStore } from '../core/store';
 import { ProductCardZayq } from '../components/ProductCardZayq';
 
 interface Props {
     onNavigate: (view: string, param?: string) => void;
-    onStartKillerDemo: () => void;
-    onOpenMSTExplorer: () => void;
 }
 
-export const LandingView: React.FC<Props> = ({ onNavigate, onStartKillerDemo, onOpenMSTExplorer }) => {
+export const LandingView: React.FC<Props> = ({ onNavigate }) => {
     const [searchInput, setSearchInput] = useState('');
+    const passports = AppStore.getPassports();
     const listings = AppStore.getListings();
-    const passportsMap = new Map(AppStore.getPassports().map(p => [p.passportId, p]));
+    const passportsMap = new Map(passports.map((passport) => [passport.passportId, passport]));
+    const featuredListing = listings[0];
+    const featuredPassport = featuredListing ? passportsMap.get(featuredListing.passportId) : undefined;
 
-    const handleSearchSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (searchInput.trim()) {
-            onNavigate('passport-detail', searchInput.trim().toUpperCase());
-        }
+    const handleSearchSubmit = (event: React.FormEvent) => {
+        event.preventDefault();
+        if (searchInput.trim()) onNavigate('passport-detail', searchInput.trim().toUpperCase());
     };
 
     return (
-        <div className="space-y-24 pb-20">
-            {/* Hero Section */}
-            <section className="relative pt-16 pb-24 overflow-hidden">
-                <div className="max-w-6xl mx-auto px-4 text-center relative z-10 space-y-8">
-                    {/* ZAYQ Eyebrow Badge */}
-                    <div className="zayq-badge shadow-sm">
-                        <Sparkles size={14} className="text-[#3D1A12]" />
-                        <span>MST Identity Network • Persistent Product Memory</span>
+        <div className="storefront -mt-24 bg-[#F7F4F2] pb-20 text-[#1A1A1A]">
+            <section className="relative flex min-h-[620px] items-end overflow-hidden bg-[#3D1A12] sm:min-h-[680px]">
+                {featuredPassport?.imageUrl && <img src={featuredPassport.imageUrl} alt={featuredListing?.title || 'Featured verified device'} loading="eager" className="absolute inset-0 h-full w-full object-cover" />}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-black/5" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/10" />
+                <div className="relative z-10 mx-auto w-full max-w-[1440px] px-6 pb-14 pt-40 text-white sm:px-10 sm:pb-20 lg:px-16">
+                    <p className="mb-5 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80"><span className="h-1.5 w-1.5 rounded-full bg-[#C5A059]" /> A considered second life</p>
+                    <h1 className="max-w-3xl font-display text-5xl font-semibold leading-[1.02] sm:text-7xl lg:text-[88px]">Good things<br /><span className="text-[#E8C985]">deserve a second life.</span></h1>
+                    <p className="mt-6 max-w-md text-sm leading-6 text-white/80 sm:text-base">Remarkable devices, with their real story attached. Shop pre-owned tech backed by a history you can verify.</p>
+                    <div className="mt-8 flex flex-wrap items-center gap-3">
+                        <button onClick={() => onNavigate('marketplace')} className="inline-flex h-12 items-center gap-8 bg-[#3D1A12] px-5 text-xs font-bold uppercase tracking-[0.12em] text-white transition-colors hover:bg-[#26100B]">Shop verified devices <ArrowRight size={16} /></button>
+                        <button onClick={() => onNavigate('create-passport')} className="inline-flex h-12 items-center gap-2 border border-white/60 px-5 text-xs font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-white hover:text-[#1A1A1A]"><Sparkles size={14} /> Create a passport</button>
                     </div>
-
-                    {/* ZAYQ Headline */}
-                    <h1 className="text-5xl sm:text-7xl font-black text-[#3D1A12] tracking-tight font-display leading-[1.08] max-w-4xl mx-auto">
-                        Every product has a history. <br />
-                        <span className="text-[#8C6D58]">
-                            Verify it before you buy.
-                        </span>
-                    </h1>
-
-                    {/* ZAYQ Sub-headline */}
-                    <p className="text-lg sm:text-xl text-[#5A4D44] max-w-3xl mx-auto leading-relaxed font-sans font-normal">
-                        Second-hand commerce traditionally relies on seller claims. <br className="hidden sm:block" />
-                        Product Passport turns the model inside out: <strong className="text-[#3D1A12] font-bold">Trust verifiable history anchored on MST.</strong>
-                    </p>
-
-                    {/* Passport Search Input */}
-                    <div className="max-w-2xl mx-auto pt-2">
-                        <form onSubmit={handleSearchSubmit} className="relative flex items-center group">
-                            <input
-                                type="text"
-                                placeholder="Enter Passport ID (e.g. PP-82941)..."
-                                value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
-                                className="zayq-input-field pl-12 pr-40 py-4 text-sm font-mono shadow-md focus:ring-4 focus:ring-[#3D1A12]/10"
-                            />
-                            <Search size={20} className="absolute left-4 text-[#8C6D58] group-focus-within:text-[#3D1A12] transition-colors" />
-                            <button type="submit" className="absolute right-2.5 zayq-btn-primary">
-                                <span>Verify</span>
-                                <ArrowRight size={14} />
-                            </button>
-                        </form>
-                        <div className="mt-3 text-xs text-[#8C6D58] font-mono flex items-center justify-center gap-3">
-                            <span className="text-[#8C6D58]">Quick Demo Passports:</span>
-                            <button onClick={() => onNavigate('passport-detail', 'PP-82941')} className="text-[#3D1A12] underline font-bold hover:text-[#8C6D58]">PP-82941</button>
-                            <button onClick={() => onNavigate('passport-detail', 'PP-91823')} className="text-[#3D1A12] underline font-bold hover:text-[#8C6D58]">PP-91823</button>
-                            <button onClick={() => onNavigate('passport-detail', 'PP-73910')} className="text-[#3D1A12] underline font-bold hover:text-[#8C6D58]">PP-73910</button>
-                        </div>
-                    </div>
-
-                    {/* ZAYQ CTA Buttons */}
-                    <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-                        <button
-                            onClick={() => onNavigate('marketplace')}
-                            className="zayq-btn-primary py-4 px-9 shadow-lg hover:scale-105 transition-all"
-                        >
-                            <span>Explore Marketplace</span>
-                            <ArrowRight size={16} />
-                        </button>
-
-                        <button
-                            onClick={onStartKillerDemo}
-                            className="zayq-btn-ghost py-4 px-8"
-                        >
-                            <Sparkles size={16} className="text-[#8C6D58]" />
-                            <span>Launch Killer Demo Sequence</span>
-                        </button>
-                    </div>
+                    {featuredListing && <button onClick={() => onNavigate('listing-detail', featuredListing.id)} className="mt-12 flex items-center gap-3 text-left text-xs text-white/75 transition-colors hover:text-white"><span className="h-px w-8 bg-white/60" /><span>Featured: {featuredListing.title}</span></button>}
                 </div>
             </section>
 
-            {/* Stats Bar */}
-            <section className="max-w-6xl mx-auto px-4">
-                <div className="zayq-card rounded-3xl p-8 grid grid-cols-2 md:grid-cols-4 gap-8 text-center shadow-sm">
-                    <div className="space-y-1">
-                        <span className="text-4xl font-black text-[#3D1A12] font-display">100%</span>
-                        <p className="text-[10px] text-[#8C6D58] font-mono tracking-zayq uppercase">History Retention</p>
+            <section className="mx-auto max-w-[1440px] px-6 py-5 sm:px-10 lg:px-16">
+                <form onSubmit={handleSearchSubmit} className="flex flex-col gap-4 border-b border-[#E5DFD9] pb-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3 text-sm"><Shield size={17} className="text-[#3D1A12]" /><span className="font-semibold">Every listing comes with its own product passport.</span><span className="hidden text-[#8C6D58] md:inline">Identity, care and ownership history. On record.</span></div>
+                    <div className="flex w-full max-w-md items-center border-b border-[#C9BDB5] focus-within:border-[#3D1A12]">
+                        <Search size={16} className="shrink-0 text-[#8C6D58]" />
+                        <input type="text" placeholder="Look up a passport ID" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} className="min-w-0 flex-1 bg-transparent px-3 py-3 text-sm text-[#1A1A1A] outline-none placeholder:text-[#A0958C]" />
+                        <button type="submit" className="py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#3D1A12]">Verify</button>
                     </div>
-                    <div className="space-y-1">
-                        <span className="text-4xl font-black text-[#3D1A12] font-display">0 NFC</span>
-                        <p className="text-[10px] text-[#8C6D58] font-mono tracking-zayq uppercase">Zero Tags Needed</p>
-                    </div>
-                    <div className="space-y-1">
-                        <span className="text-4xl font-black text-[#8C6D58] font-display">5 Tiers</span>
-                        <p className="text-[10px] text-[#8C6D58] font-mono tracking-zayq uppercase">Attestation Claims</p>
-                    </div>
-                    <div className="space-y-1">
-                        <span className="text-4xl font-black text-[#3D1A12] font-display">MST L1</span>
-                        <p className="text-[10px] text-[#8C6D58] font-mono tracking-zayq uppercase">Smart Contract Escrow</p>
-                    </div>
+                </form>
+            </section>
+
+            <section className="mx-auto max-w-[1440px] space-y-7 px-6 pb-16 pt-10 sm:px-10 sm:pt-14 lg:px-16">
+                <div className="flex items-end justify-between gap-4"><div><p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#8C6D58]">Curated selection</p><h2 className="font-display text-3xl font-semibold sm:text-4xl">Latest finds</h2></div><button onClick={() => onNavigate('marketplace')} className="inline-flex shrink-0 items-center gap-2 border-b border-[#3D1A12] pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#3D1A12]">View all <ArrowRight size={13} /></button></div>
+                <div className="grid grid-cols-1 gap-x-5 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
+                    {listings.slice(0, 3).map((listing) => <ProductCardZayq key={listing.id} listing={listing} passport={passportsMap.get(listing.passportId)} onViewDetail={(id) => onNavigate('listing-detail', id)} onViewPassport={(id) => onNavigate('passport-detail', id)} />)}
                 </div>
             </section>
 
-            {/* Trust Pillars */}
-            <section className="max-w-6xl mx-auto px-4 space-y-10">
-                <div className="text-center space-y-2">
-                    <span className="text-[10px] font-mono font-black text-[#3D1A12] uppercase tracking-zayq">Trust Architecture</span>
-                    <h2 className="text-3xl sm:text-4xl font-black text-[#3D1A12] font-display">How Product Passport Protects Resale</h2>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="zayq-card rounded-2xl p-7 space-y-4">
-                        <div className="w-12 h-12 rounded-2xl bg-[#3D1A12]/10 border border-[#3D1A12]/20 flex items-center justify-center text-[#3D1A12]">
-                            <Shield size={26} />
-                        </div>
-                        <h3 className="text-xl font-bold text-[#3D1A12] font-display">1. Persistent Identity</h3>
-                        <p className="text-sm text-[#5A4D44] leading-relaxed font-sans">
-                            Every device gets an immutable Passport ID (<span className="font-mono text-[#3D1A12]">PP-82941</span>) linked to its hashed serial/IMEI. History survives every ownership transfer.
-                        </p>
-                    </div>
-
-                    <div className="zayq-card rounded-2xl p-7 space-y-4">
-                        <div className="w-12 h-12 rounded-2xl bg-[#8C6D58]/10 border border-[#8C6D58]/20 flex items-center justify-center text-[#8C6D58]">
-                            <Layers size={26} />
-                        </div>
-                        <h3 className="text-xl font-bold text-[#3D1A12] font-display">2. Layered Attestations</h3>
-                        <p className="text-sm text-[#5A4D44] leading-relaxed font-sans">
-                            Claims are layered: Identity Verified → Invoice Match → TechCert Professionally Inspected → OEM Service Attested.
-                        </p>
-                    </div>
-
-                    <div className="zayq-card rounded-2xl p-7 space-y-4">
-                        <div className="w-12 h-12 rounded-2xl bg-[#C5A059]/15 border border-[#C5A059]/30 flex items-center justify-center text-[#6B501B]">
-                            <Lock size={26} />
-                        </div>
-                        <h3 className="text-xl font-bold text-[#3D1A12] font-display">3. MST Escrow</h3>
-                        <p className="text-sm text-[#5A4D44] leading-relaxed font-sans">
-                            Smart contracts (<span className="font-mono text-[#3D1A12]">OwnershipRegistry</span>) lock funds until buyer receives and confirms physical handover.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            {/* Featured Products */}
-            <section className="max-w-6xl mx-auto px-4 space-y-8">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-3xl font-black text-[#3D1A12] font-display">Verified Marketplace</h2>
-                        <p className="text-sm text-[#8C6D58] font-mono mt-1">Live items backed by MST blockchain proof</p>
-                    </div>
-
-                    <button
-                        onClick={() => onNavigate('marketplace')}
-                        className="text-xs text-[#3D1A12] hover:text-[#8C6D58] font-mono font-bold flex items-center gap-1.5 hover:underline"
-                    >
-                        <span>View All Listings</span>
-                        <ArrowRight size={14} />
-                    </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {listings.slice(0, 3).map((l) => (
-                        <ProductCardZayq
-                            key={l.id}
-                            listing={l}
-                            passport={passportsMap.get(l.passportId)}
-                            onViewDetail={(id) => onNavigate('listing-detail', id)}
-                            onViewPassport={(id) => onNavigate('passport-detail', id)}
-                        />
-                    ))}
+            <section className="mx-auto grid max-w-[1440px] gap-10 border-y border-[#E5DFD9] px-6 py-12 sm:px-10 md:grid-cols-[1fr_2fr] md:items-center lg:px-16">
+                <div><p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#8C6D58]">A little more certainty</p><h2 className="max-w-sm font-display text-3xl font-semibold leading-tight sm:text-4xl">Know the story behind your next device.</h2></div>
+                <div className="grid gap-6 sm:grid-cols-3">
+                    <div className="border-t border-[#C9BDB5] pt-4"><CheckCircle2 size={16} className="mb-4 text-[#3D1A12]" /><h3 className="text-sm font-semibold">Identity that stays</h3><p className="mt-2 text-xs leading-5 text-[#5A4D44]">A unique passport follows each device through every owner.</p></div>
+                    <div className="border-t border-[#C9BDB5] pt-4"><Shield size={16} className="mb-4 text-[#3D1A12]" /><h3 className="text-sm font-semibold">Care, on record</h3><p className="mt-2 text-xs leading-5 text-[#5A4D44]">Repairs and inspections are attached to the product history.</p></div>
+                    <div className="border-t border-[#C9BDB5] pt-4"><Lock size={16} className="mb-4 text-[#3D1A12]" /><h3 className="text-sm font-semibold">Protected handover</h3><p className="mt-2 text-xs leading-5 text-[#5A4D44]">Escrow keeps payment secure until the device is received.</p></div>
                 </div>
             </section>
         </div>
