@@ -75,8 +75,8 @@ export function getContract(
         }
     }
 
-    // Fallback: read-only provider
-    const provider = new ethers.JsonRpcProvider('https://testnetrpc.mstblockchain.com');
+    // Fallback: read-only provider on MST Testnet
+    const provider = new ethers.JsonRpcProvider('https://rpc.masterstroke.academy');
     return new ethers.Contract(address, abi, provider);
 }
 
