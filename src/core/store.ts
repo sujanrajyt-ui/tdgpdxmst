@@ -20,7 +20,7 @@ export const CURRENT_USER: User = {
     name: 'Arjun Mehta',
     email: 'arjun.mehta@example.com',
     role: 'CONSUMER',
-    mstIdentityDid: 'did:mst:saral:93821849',
+    mstIdentityDid: 'did:mst:saral:0x77A793d2E4546DF90E11553832c657a3b2422C02',
     saralVerified: true,
     reputationScore: 98,
     avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'
