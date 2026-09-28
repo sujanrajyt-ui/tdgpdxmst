@@ -160,4 +160,18 @@ export function getProvider(): ethers.BrowserProvider {
     return walletState.provider;
 }
 
+export async function connectBridgekeyWallet(): Promise<{ success: boolean; account?: string; error?: string }> {
+    try {
+        const state = await connectWallet();
+        return { success: true, account: state.address || undefined };
+    } catch (e: any) {
+        return { success: false, error: e.message || 'Failed to connect wallet' };
+    }
+}
+
+export function getMSTNetworkDetails() {
+    return MST_TESTNET_CONFIG;
+}
+
 export { MST_TESTNET_CONFIG };
+

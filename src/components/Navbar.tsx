@@ -31,6 +31,7 @@ export const Navbar: React.FC<Props> = ({
     const navItems = [
         { label: 'Marketplace', view: 'marketplace', icon: Store },
         { label: 'My Passports', view: 'dashboard', icon: UserIcon },
+        { label: 'MST Ecosystem', view: 'mst-ecosystem', icon: Cpu },
     ];
 
     return (

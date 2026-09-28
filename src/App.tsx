@@ -16,6 +16,7 @@ import { EscrowHandoverView } from './views/EscrowHandoverView';
 import { ServicePortalView } from './views/ServicePortalView';
 import { AdminConsoleView } from './views/AdminConsoleView';
 import { StolenDisputeView } from './views/StolenDisputeView';
+import { MSTEcosystemView } from './views/MSTEcosystemView';
 
 import { Sparkles, ArrowRight, ShieldCheck, Wrench, ArrowRightLeft, Cpu, CheckCircle2, Play, Pause, RotateCcw } from 'lucide-react';
 
@@ -178,6 +179,13 @@ export function App() {
                         currentUser={currentUser}
                         onNavigate={handleNavigate}
                         onOpenMSTExplorer={handleOpenMSTExplorer}
+                    />
+                );
+            case 'mst-ecosystem':
+                return (
+                    <MSTEcosystemView
+                        onNavigate={handleNavigate}
+                        onOpenExplorer={() => handleOpenMSTExplorer()}
                     />
                 );
             default:
