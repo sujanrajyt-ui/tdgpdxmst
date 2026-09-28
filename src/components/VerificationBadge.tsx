@@ -15,37 +15,32 @@ export const VerificationBadge: React.FC<Props> = ({ level, size = 'md', showLab
                 return {
                     label: 'Manufacturer Verified',
                     icon: Award,
-                    bg: 'bg-amber-500/20 border-amber-500/40 text-amber-300',
-                    glow: 'shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                    bg: 'bg-amber-50 border-amber-200 text-amber-700',
                 };
             case 'PROFESSIONALLY_INSPECTED':
                 return {
                     label: 'TechCert Inspected',
                     icon: ShieldCheck,
-                    bg: 'bg-purple-500/20 border-purple-500/40 text-purple-300',
-                    glow: 'shadow-[0_0_12px_rgba(139,92,246,0.25)]'
+                    bg: 'bg-violet-50 border-violet-200 text-violet-700',
                 };
             case 'OWNERSHIP_VERIFIED':
                 return {
                     label: 'Ownership Verified',
                     icon: CheckCircle2,
-                    bg: 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300',
-                    glow: 'shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                    bg: 'bg-emerald-50 border-emerald-200 text-emerald-700',
                 };
             case 'IDENTITY_VERIFIED':
                 return {
                     label: 'Identity Verified',
                     icon: FileCheck,
-                    bg: 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300',
-                    glow: 'shadow-[0_0_12px_rgba(6,182,212,0.25)]'
+                    bg: 'bg-teal-50 border-teal-200 text-teal-700',
                 };
             case 'SELLER_REPORTED':
             default:
                 return {
                     label: 'Seller Reported',
                     icon: ShieldAlert,
-                    bg: 'bg-slate-800/80 border-slate-700 text-slate-400',
-                    glow: ''
+                    bg: 'bg-gray-100 border-gray-200 text-gray-500',
                 };
         }
     };
@@ -67,7 +62,7 @@ export const VerificationBadge: React.FC<Props> = ({ level, size = 'md', showLab
 
     return (
         <span
-            className={`inline-flex items-center rounded-full border backdrop-blur-md transition-all ${config.bg} ${config.glow} ${sizeClasses[size]}`}
+            className={`inline-flex items-center rounded-full border shadow-sm transition-all ${config.bg} ${sizeClasses[size]}`}
         >
             <Icon size={iconSizes[size]} />
             {showLabel && <span>{config.label}</span>}
