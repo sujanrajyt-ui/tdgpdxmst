@@ -418,8 +418,44 @@ const INITIAL_LISTINGS: MarketplaceListing[] = [
 ];
 
 export class AppStore {
-    private static passports: ProductPassport[] = [...INITIAL_PASSPORTS];
-    private static listings: MarketplaceListing[] = [...INITIAL_LISTINGS];
+    private static passports: ProductPassport[] = AppStore.loadPassports();
+    private static listings: MarketplaceListing[] = AppStore.loadListings();
+
+    private static loadPassports(): ProductPassport[] {
+        try {
+            const saved = localStorage.getItem('mst_passports');
+            if (saved) return JSON.parse(saved);
+        } catch (e) {
+            console.error('Failed to load passports from localStorage:', e);
+        }
+        return [...INITIAL_PASSPORTS];
+    }
+
+    private static loadListings(): MarketplaceListing[] {
+        try {
+            const saved = localStorage.getItem('mst_listings');
+            if (saved) return JSON.parse(saved);
+        } catch (e) {
+            console.error('Failed to load listings from localStorage:', e);
+        }
+        return [...INITIAL_LISTINGS];
+    }
+
+    public static saveState(): void {
+        try {
+            localStorage.setItem('mst_passports', JSON.stringify(this.passports));
+            localStorage.setItem('mst_listings', JSON.stringify(this.listings));
+        } catch (e) {
+            console.error('Failed to save to localStorage:', e);
+        }
+    }
+
+    public static clearStorage(): void {
+        localStorage.removeItem('mst_passports');
+        localStorage.removeItem('mst_listings');
+        this.passports = [...INITIAL_PASSPORTS];
+        this.listings = [...INITIAL_LISTINGS];
+    }
 
     public static getPassports(): ProductPassport[] {
         return [...this.passports];
@@ -569,6 +605,7 @@ export class AppStore {
         };
 
         this.passports.unshift(newPassport);
+        this.saveState();
         return { passport: newPassport, anchorTx: anchor.transactionHash };
     }
 
@@ -630,6 +667,7 @@ export class AppStore {
         });
 
         this.listings.unshift(listing);
+        this.saveState();
         return listing;
     }
 
@@ -650,6 +688,7 @@ export class AppStore {
 
         passport.currentStatus = 'TRANSFER_PENDING';
         passport.updatedAt = new Date().toISOString();
+        this.saveState();
 
         return listing;
     }
