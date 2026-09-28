@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, ProductCategory } from '../types';
 import { AppStore } from '../core/store';
 import { Shield, Sparkles, Upload, FileText, CheckCircle2, Cpu, AlertTriangle } from 'lucide-react';
+import { ZayqEyebrow, ZayqPageHeader } from '../components/Zayq';
 
 interface Props {
     currentUser: User;
@@ -66,28 +67,26 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
 
     return (
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <div className="inline-flex items-center gap-2 bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-3 py-1 rounded-full text-xs font-mono mb-2">
+            <ZayqPageHeader
+                eyebrow={
+                    <ZayqEyebrow>
                         <Cpu size={14} />
-                        <span>MST Product Identity Network</span>
-                    </div>
-                    <h1 className="text-2xl font-extrabold text-white font-sans">Register New Product Passport</h1>
-                    <p className="text-xs text-slate-400 font-mono mt-1">
-                        Create a persistent digital identity anchored on MST smart contracts.
-                    </p>
-                </div>
-
-                <button
-                    onClick={handleAiAssist}
-                    type="button"
-                    className="bg-slate-900 hover:bg-slate-800 border border-purple-500/40 text-purple-300 font-semibold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(139,92,246,0.2)]"
-                >
-                    <Sparkles size={14} className="text-purple-400" />
-                    <span>AI Photo Listing Auto-Fill</span>
-                </button>
-            </div>
+                        MST Product Identity Network
+                    </ZayqEyebrow>
+                }
+                title="Register New Product Passport"
+                description="Create a persistent digital identity anchored on MST smart contracts."
+                actions={
+                    <button
+                        onClick={handleAiAssist}
+                        type="button"
+                        className="bg-slate-900 hover:bg-slate-800 border border-purple-500/40 text-purple-300 font-semibold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-[0_0_12px_rgba(139,92,246,0.2)]"
+                    >
+                        <Sparkles size={14} className="text-purple-400" />
+                        <span>AI Photo Listing Auto-Fill</span>
+                    </button>
+                }
+            />
 
             {aiAutofillUsed && (
                 <div className="bg-purple-500/10 border border-purple-500/30 text-purple-300 p-3 rounded-xl text-xs flex items-center gap-2 font-mono">
@@ -97,7 +96,7 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="zayq-glass-card rounded-2xl p-6 space-y-6">
                 {/* Category Choice */}
                 <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-2">Product Category</label>
@@ -246,7 +245,7 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
                 <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-cyan-900/30 flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="zayq-btn-primary w-full flex items-center justify-center gap-2"
                 >
                     {isSubmitting ? (
                         <span>Computing WASMify Proof & Anchoring on MST...</span>

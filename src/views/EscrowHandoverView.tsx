@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppStore } from '../core/store';
 import { User } from '../types';
 import { ArrowRightLeft, ShieldCheck, CheckCircle2, Lock, Sparkles, ExternalLink } from 'lucide-react';
+import { ZayqEyebrow } from '../components/Zayq';
 
 interface Props {
     listingId: string;
@@ -44,10 +45,10 @@ export const EscrowHandoverView: React.FC<Props> = ({
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
             {/* Header */}
             <div className="text-center space-y-2">
-                <div className="inline-flex items-center gap-2 bg-purple-500/10 text-purple-300 border border-purple-500/30 px-3 py-1 rounded-full text-xs font-mono">
+                <ZayqEyebrow tone="purple">
                     <ArrowRightLeft size={14} />
-                    <span>MST OwnershipRegistry.completeTransfer</span>
-                </div>
+                    MST OwnershipRegistry.completeTransfer
+                </ZayqEyebrow>
                 <h1 className="text-2xl font-extrabold text-white font-sans">Physical Handover & Dual Confirmation</h1>
                 <p className="text-xs text-slate-400 font-mono">
                     Escrow funds deposited for Passport <strong className="text-cyan-300">{passport.passportId}</strong>
@@ -99,7 +100,7 @@ export const EscrowHandoverView: React.FC<Props> = ({
                     </div>
                 </div>
             ) : (
-                <form onSubmit={handleConfirmHandover} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <form onSubmit={handleConfirmHandover} className="zayq-glass-card rounded-2xl p-6 space-y-6">
                     {/* Item Card */}
                     <div className="flex items-center gap-4 bg-slate-950 p-4 rounded-xl border border-slate-800">
                         <img src={passport.imageUrl} alt={passport.model} className="w-16 h-16 rounded-lg object-cover" />

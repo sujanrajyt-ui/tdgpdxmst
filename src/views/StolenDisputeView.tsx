@@ -42,7 +42,7 @@ export const StolenDisputeView: React.FC<Props> = ({
     return (
         <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
             {/* Header */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="zayq-glass-card rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center">
                         <AlertOctagon size={24} />
@@ -60,7 +60,7 @@ export const StolenDisputeView: React.FC<Props> = ({
             </div>
 
             {/* Target Passport Box */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div className="zayq-glass-card rounded-2xl p-6 space-y-4">
                 <h3 className="text-sm font-bold text-white font-sans">Select Passport to Report / Dispute</h3>
                 <input
                     type="text"
@@ -87,7 +87,7 @@ export const StolenDisputeView: React.FC<Props> = ({
             </div>
 
             {passport && (
-                <form onSubmit={handleReportStolen} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <form onSubmit={handleReportStolen} className="zayq-glass-card rounded-2xl p-6 space-y-6">
                     <h3 className="text-base font-bold text-white font-sans flex items-center gap-2">
                         <ShieldAlert size={18} className="text-rose-400" />
                         <span>File Evidence-Backed Theft Report</span>
@@ -139,7 +139,7 @@ export const StolenDisputeView: React.FC<Props> = ({
 
             {/* Existing Disputes on this Passport */}
             {passport && passport.disputes.length > 0 && (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <div className="zayq-glass-card rounded-2xl p-6 space-y-4">
                     <h3 className="text-sm font-bold text-white font-sans">Active Disputes & Recovery Actions</h3>
                     {passport.disputes.map((d) => (
                         <div key={d.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">

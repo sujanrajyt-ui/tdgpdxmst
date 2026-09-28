@@ -20,7 +20,7 @@ export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) 
     return (
         <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
             {/* Header */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="zayq-glass-card rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-700 flex items-center justify-center text-white text-2xl font-bold border-2 border-cyan-400/40">
                         {currentUser.name.charAt(0)}
@@ -39,7 +39,7 @@ export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) 
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => onNavigate('create-passport')}
-                        className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all"
+                        className="zayq-btn-primary flex items-center gap-1.5"
                     >
                         <PlusCircle size={15} />
                         <span>Register New Passport</span>
@@ -80,7 +80,7 @@ export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) 
                 </div>
 
                 {passports.length === 0 ? (
-                    <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-12 text-center text-slate-400 space-y-3">
+                    <div className="zayq-glass-card rounded-2xl p-12 text-center text-slate-400 space-y-3">
                         <Shield size={36} className="mx-auto text-slate-600" />
                         <p className="text-sm font-medium">You don't own any active Product Passports yet.</p>
                         <button
@@ -96,7 +96,7 @@ export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) 
                         {passports.map((p) => (
                             <div
                                 key={p.passportId}
-                                className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex gap-4 hover:border-cyan-500/50 transition-all cursor-pointer group"
+                                className="zayq-glass-card rounded-xl p-4 flex gap-4 hover:border-cyan-500/50 transition-all cursor-pointer group"
                                 onClick={() => onNavigate('passport-detail', p.passportId)}
                             >
                                 <img
@@ -140,7 +140,7 @@ export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) 
                 ) : (
                     <div className="space-y-3">
                         {listings.map((l) => (
-                            <div key={l.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+                            <div key={l.id} className="zayq-glass-card rounded-xl p-4 flex items-center justify-between">
                                 <div>
                                     <h4 className="font-bold text-sm text-white">{l.title}</h4>
                                     <p className="text-xs text-slate-400 font-mono mt-0.5">

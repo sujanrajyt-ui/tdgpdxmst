@@ -43,7 +43,7 @@ export const ServicePortalView: React.FC<Props> = ({
     return (
         <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
             {/* Header Banner */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="zayq-glass-card rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center">
                         <Wrench size={24} />
@@ -66,7 +66,7 @@ export const ServicePortalView: React.FC<Props> = ({
             </div>
 
             {/* Passport Search Lookup */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div className="zayq-glass-card rounded-2xl p-6 space-y-4">
                 <h3 className="text-sm font-bold text-white font-sans">Lookup Product Passport for Servicing</h3>
 
                 <div className="flex gap-2">
@@ -103,7 +103,7 @@ export const ServicePortalView: React.FC<Props> = ({
 
             {/* Service Record Submission Form */}
             {passport && (
-                <form onSubmit={handleAddService} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <form onSubmit={handleAddService} className="zayq-glass-card rounded-2xl p-6 space-y-6">
                     <h3 className="text-base font-bold text-white font-sans flex items-center gap-2">
                         <PlusCircle size={18} className="text-amber-400" />
                         <span>Record Service & OEM Repair Attestation</span>

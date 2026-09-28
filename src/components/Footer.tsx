@@ -29,7 +29,7 @@ export const Footer: React.FC<Props> = ({ onNavigate, onOpenMSTExplorer }) => {
 
                 {/* Col 2 */}
                 <div className="space-y-2">
-                    <span className="font-bold text-white text-xs font-sans uppercase tracking-wider block mb-2">Ecosystem Portals</span>
+                    <span className="font-bold text-white text-xs font-sans uppercase tracking-zayq block mb-2">Ecosystem Portals</span>
                     <ul className="space-y-1.5">
                         <li>
                             <button onClick={() => onNavigate('marketplace')} className="hover:text-cyan-300 transition-colors">
@@ -61,7 +61,7 @@ export const Footer: React.FC<Props> = ({ onNavigate, onOpenMSTExplorer }) => {
 
                 {/* Col 3 */}
                 <div className="space-y-2">
-                    <span className="font-bold text-white text-xs font-sans uppercase tracking-wider block mb-2">MST Technology</span>
+                    <span className="font-bold text-white text-xs font-sans uppercase tracking-zayq block mb-2">MST Technology</span>
                     <ul className="space-y-1.5">
                         <li>
                             <button onClick={onOpenMSTExplorer} className="hover:text-cyan-300 transition-colors flex items-center gap-1 font-mono text-[11px]">
@@ -85,7 +85,7 @@ export const Footer: React.FC<Props> = ({ onNavigate, onOpenMSTExplorer }) => {
                 </div>
 
                 {/* Col 4 */}
-                <div className="space-y-3 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                <div className="space-y-3 zayq-glass-card p-4 rounded-xl">
                     <div className="flex items-center gap-1.5 font-semibold text-white text-xs">
                         <Lock size={14} className="text-cyan-400" />
                         <span>Core Product Thesis</span>

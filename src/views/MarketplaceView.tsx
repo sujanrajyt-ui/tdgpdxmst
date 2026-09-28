@@ -2,17 +2,23 @@ import React, { useState } from 'react';
 import { AppStore } from '../core/store';
 import { ProductCardZayq } from '../components/ProductCardZayq';
 import { Store, Search, Filter, Shield, Tag, ArrowRight, CheckCircle2, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
-import { ProductCategory, VerificationLevel } from '../types';
+import { ProductCategory, User, VerificationLevel } from '../types';
 
 interface Props {
     onNavigate: (view: string, param?: string) => void;
+    currentUser: User;
+    listPassportId?: string;
 }
 
-export const MarketplaceView: React.FC<Props> = ({ onNavigate }) => {
+export const MarketplaceView: React.FC<Props> = ({ onNavigate, currentUser, listPassportId }) => {
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
     const [selectedVerification, setSelectedVerification] = useState<string>('ALL');
     const [sortBy, setSortBy] = useState<'NEWEST' | 'PRICE_LOW' | 'PRICE_HIGH'>('NEWEST');
+    const listPassport = listPassportId ? AppStore.getPassportById(listPassportId) : undefined;
+    const [listPrice, setListPrice] = useState(62000);
+    const [listLocation, setListLocation] = useState('Bengaluru, KA');
+    const [isListing, setIsListing] = useState(false);
 
     const listings = AppStore.getListings();
     const passportsMap = new Map(AppStore.getPassports().map(p => [p.passportId, p]));
@@ -80,6 +86,57 @@ export const MarketplaceView: React.FC<Props> = ({ onNavigate }) => {
                     </button>
                 </div>
             </div>
+
+            {listPassport && (
+                <div className="zayq-glass-card rounded-2xl p-6 space-y-4 border border-cyan-500/30">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-[10px] font-bold tracking-zayq uppercase mb-2">
+                                <Tag size={12} />
+                                <span>Listing Composer</span>
+                            </div>
+                            <h2 className="text-lg font-black text-white">Publish {listPassport.model}</h2>
+                            <p className="text-xs text-slate-400 font-mono mt-0.5">{listPassport.passportId} · MST MarketplaceRegistry</p>
+                        </div>
+                        <img src={listPassport.imageUrl} alt={listPassport.model} className="w-16 h-16 rounded-xl object-cover border border-slate-800" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input
+                            type="number"
+                            value={listPrice}
+                            onChange={(e) => setListPrice(Number(e.target.value))}
+                            className="zayq-input font-mono"
+                            placeholder="Price (INR)"
+                        />
+                        <input
+                            type="text"
+                            value={listLocation}
+                            onChange={(e) => setListLocation(e.target.value)}
+                            className="zayq-input"
+                            placeholder="Location"
+                        />
+                    </div>
+                    <button
+                        disabled={isListing}
+                        onClick={async () => {
+                            setIsListing(true);
+                            const listing = await AppStore.createListing(
+                                listPassport.passportId,
+                                listPrice,
+                                listLocation,
+                                listPassport.model,
+                                `Verified ${listPassport.brand} with persistent passport ${listPassport.passportId}.`,
+                                currentUser
+                            );
+                            setIsListing(false);
+                            onNavigate('listing-detail', listing.id);
+                        }}
+                        className="zayq-btn-primary"
+                    >
+                        {isListing ? 'Anchoring listing on MST...' : 'Publish Listing'}
+                    </button>
+                </div>
+            )}
 
             {/* ZAYQ Toolbar & Filter Control Bar */}
             <div className="zayq-glass rounded-2xl p-4 space-y-4">

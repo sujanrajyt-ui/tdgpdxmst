@@ -132,7 +132,13 @@ export function App() {
                 );
             case 'marketplace':
             case 'create-listing':
-                return <MarketplaceView onNavigate={handleNavigate} />;
+                return (
+                    <MarketplaceView
+                        onNavigate={handleNavigate}
+                        currentUser={currentUser}
+                        listPassportId={currentView === 'create-listing' ? viewParam : undefined}
+                    />
+                );
             case 'listing-detail':
                 return (
                     <ListingDetailView
@@ -201,7 +207,7 @@ export function App() {
 
             {/* Killer Demo Persistent Floating Control Overlay */}
             {killerDemoActive && (
-                <div className="fixed bottom-6 right-6 z-40 bg-slate-900/95 border-2 border-cyan-500 rounded-2xl p-4 shadow-[0_0_30px_rgba(6,182,212,0.4)] backdrop-blur-md max-w-sm w-full space-y-3 animate-in slide-in-from-bottom duration-300">
+                <div className="fixed bottom-6 right-6 z-40 zayq-glass border-2 border-cyan-500 rounded-2xl p-4 shadow-[0_0_30px_rgba(6,182,212,0.4)] max-w-sm w-full space-y-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-lg bg-cyan-500/20 text-cyan-300 flex items-center justify-center font-mono text-xs font-bold border border-cyan-500/40">

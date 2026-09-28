@@ -34,7 +34,7 @@ export const ListingDetailView: React.FC<Props> = ({ listingId, currentUser, onN
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Images */}
                 <div className="space-y-3">
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden relative">
+                    <div className="zayq-glass-card rounded-2xl overflow-hidden relative">
                         <img
                             src={passport.imageUrl}
                             alt={listing.title}
@@ -74,7 +74,7 @@ export const ListingDetailView: React.FC<Props> = ({ listingId, currentUser, onN
                     </div>
 
                     {/* Price & Buy Action Box */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+                    <div className="zayq-glass-card rounded-2xl p-6 space-y-4 shadow-xl">
                         <div className="flex items-baseline justify-between">
                             <div>
                                 <span className="text-xs text-slate-400 font-mono block">Verified Price</span>
@@ -106,7 +106,7 @@ export const ListingDetailView: React.FC<Props> = ({ listingId, currentUser, onN
                             <button
                                 onClick={handleInitiatePurchase}
                                 disabled={isProcessing}
-                                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-cyan-900/30 flex items-center justify-center gap-2 disabled:opacity-50 transform hover:scale-[1.02]"
+                                className="zayq-btn-primary w-full flex items-center justify-center gap-2"
                             >
                                 {isProcessing ? (
                                     <span>Initializing Escrow Protected Transfer...</span>
@@ -121,7 +121,7 @@ export const ListingDetailView: React.FC<Props> = ({ listingId, currentUser, onN
                     </div>
 
                     {/* Seller Trust Score */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between text-xs font-mono">
+                    <div className="zayq-glass-card rounded-2xl p-4 flex items-center justify-between text-xs font-mono">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 flex items-center justify-center font-bold">
                                 {listing.sellerName.charAt(0)}
@@ -140,7 +140,7 @@ export const ListingDetailView: React.FC<Props> = ({ listingId, currentUser, onN
             </div>
 
             {/* Description & Passport Verification Summary */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+            <div className="zayq-glass-card rounded-2xl p-6 space-y-4">
                 <h3 className="text-base font-bold text-white font-sans">Seller Description</h3>
                 <p className="text-xs text-slate-300 leading-relaxed font-sans">{listing.description}</p>
 

@@ -30,7 +30,7 @@ export const AdminConsoleView: React.FC<Props> = ({ currentUser, onNavigate, onO
     return (
         <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
             {/* Header */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="zayq-glass-card rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center">
                         <Shield size={24} />
@@ -58,7 +58,7 @@ export const AdminConsoleView: React.FC<Props> = ({ currentUser, onNavigate, onO
             </div>
 
             {/* MST Anchor Queue Telemetry Box */}
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+            <div className="zayq-glass-card rounded-2xl p-5 space-y-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Cpu size={18} className="text-cyan-400" />

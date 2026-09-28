@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Search, PlusCircle, Store, Wrench, AlertOctagon, Cpu, User as UserIcon, Sparkles } from 'lucide-react';
+import { Shield, Search, PlusCircle, Store, Wrench, AlertOctagon, Cpu, User as UserIcon, Sparkles, Menu, X } from 'lucide-react';
 import { User } from '../types';
 
 interface Props {
@@ -20,6 +20,7 @@ export const Navbar: React.FC<Props> = ({
     onStartKillerDemo
 }) => {
     const [passportSearch, setPassportSearch] = useState('');
+    const [mobileOpen, setMobileOpen] = useState(false);
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -160,8 +161,51 @@ export const Navbar: React.FC<Props> = ({
                             </div>
                         </button>
                     </div>
+
+                    <button
+                        onClick={() => setMobileOpen((open) => !open)}
+                        className="lg:hidden p-2 rounded-xl text-slate-300 hover:bg-slate-900 hover:text-white"
+                        aria-label="Open navigation"
+                    >
+                        {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+                    </button>
                 </nav>
             </div>
+
+            {mobileOpen && (
+                <div className="lg:hidden zayq-glass border-t border-slate-800/80 px-4 py-3 space-y-2">
+                    <form onSubmit={handleSearchSubmit} className="relative md:hidden">
+                        <input
+                            type="text"
+                            placeholder="Verify Passport ID..."
+                            value={passportSearch}
+                            onChange={(e) => setPassportSearch(e.target.value)}
+                            className="zayq-input pl-9 py-2 text-xs"
+                        />
+                        <Search size={14} className="absolute left-3 top-2.5 text-slate-500" />
+                    </form>
+                    {[
+                        { label: 'Marketplace', view: 'marketplace' },
+                        { label: 'My Passports', view: 'dashboard' },
+                        { label: 'Create Passport', view: 'create-passport' },
+                        { label: 'Service Portal', view: 'service-portal' },
+                        { label: 'Admin Console', view: 'admin-console' },
+                    ].map((item) => (
+                        <button
+                            key={item.view}
+                            onClick={() => {
+                                onNavigate(item.view);
+                                setMobileOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider ${
+                                currentView === item.view ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:bg-slate-900'
+                            }`}
+                        >
+                            {item.label}
+                        </button>
+                    ))}
+                </div>
+            )}
         </header>
     );
 };

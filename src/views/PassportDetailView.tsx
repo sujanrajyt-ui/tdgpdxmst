@@ -33,7 +33,7 @@ export const PassportDetailView: React.FC<Props> = ({
     return (
         <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
             {/* Top Breadcrumb & Quick Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 zayq-glass-card rounded-2xl p-4">
                 <div>
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded border border-cyan-500/30">
@@ -90,7 +90,7 @@ export const PassportDetailView: React.FC<Props> = ({
                 {/* Left Column (Images, Overview & Verification Badges) */}
                 <div className="space-y-6">
                     {/* Main Image */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden relative group">
+                    <div className="zayq-glass-card rounded-2xl overflow-hidden relative group">
                         <img
                             src={passport.imageUrl}
                             alt={passport.model}
@@ -98,12 +98,12 @@ export const PassportDetailView: React.FC<Props> = ({
                         />
                         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap">
                             <VerificationBadge level={passport.verificationLevel} size="md" />
-                            <StatusBadge status={passport.currentStatus} font-mono />
+                            <StatusBadge status={passport.currentStatus} />
                         </div>
                     </div>
 
                     {/* Device Identifiers Box (NO NFC) */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 font-mono text-xs">
+                    <div className="zayq-glass-card rounded-2xl p-5 space-y-3 font-mono text-xs">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                             <span className="font-bold text-white font-sans">Cryptographic Product Identity</span>
                             <span className="text-[10px] text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
@@ -150,7 +150,7 @@ export const PassportDetailView: React.FC<Props> = ({
                     </div>
 
                     {/* Current Owner Card */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+                    <div className="zayq-glass-card rounded-2xl p-5 space-y-2">
                         <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block font-sans">Current Verified Owner</span>
                         <div className="flex items-center justify-between">
                             <div>
@@ -175,7 +175,7 @@ export const PassportDetailView: React.FC<Props> = ({
                 {/* Right 2 Columns (Timeline, Service Records, Inspection & Attestations) */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Layered Verification Claims Grid */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                    <div className="zayq-glass-card rounded-2xl p-5 space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-base font-bold text-white font-sans flex items-center gap-2">
                                 <Shield size={18} className="text-cyan-400" />
@@ -228,7 +228,7 @@ export const PassportDetailView: React.FC<Props> = ({
                     </div>
 
                     {/* Verified OEM Service Records */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                    <div className="zayq-glass-card rounded-2xl p-5 space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-base font-bold text-white font-sans flex items-center gap-2">
                                 <Wrench size={18} className="text-amber-400" />
@@ -287,7 +287,7 @@ export const PassportDetailView: React.FC<Props> = ({
                     </div>
 
                     {/* Timeline of Product Identity Events */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                    <div className="zayq-glass-card rounded-2xl p-5 space-y-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-base font-bold text-white font-sans flex items-center gap-2">
                                 <Calendar size={18} className="text-cyan-400" />

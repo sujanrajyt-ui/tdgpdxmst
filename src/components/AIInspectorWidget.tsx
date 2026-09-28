@@ -42,7 +42,7 @@ export const AIInspectorWidget: React.FC<Props> = ({
     const badge = getRiskBadge();
 
     return (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-4">
+        <div className="zayq-glass-card rounded-xl p-4 space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

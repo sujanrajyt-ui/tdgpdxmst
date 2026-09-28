@@ -188,6 +188,53 @@ export const LandingView: React.FC<Props> = ({ onNavigate, onStartKillerDemo, on
                     ))}
                 </div>
             </section>
+
+            <section className="max-w-6xl mx-auto px-4 space-y-8">
+                <div className="text-center space-y-2">
+                    <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-zayq">Killer Demo Path</span>
+                    <h2 className="text-3xl font-black text-white font-sans">Five steps. One persistent identity.</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                    {[
+                        { n: '01', t: 'Create Passport', d: 'Anchor serial, invoice, and identity.' },
+                        { n: '02', t: 'OEM Service', d: 'iCare logs battery replacement.' },
+                        { n: '03', t: 'List for Sale', d: 'Marketplace with verification badges.' },
+                        { n: '04', t: 'Escrow Handover', d: 'Dual codes complete OwnershipRegistry.' },
+                        { n: '05', t: 'Identity Survives', d: 'PP-82941 keeps full history.' },
+                    ].map((step) => (
+                        <div key={step.n} className="zayq-glass-card rounded-2xl p-4 space-y-2 zayq-card-hover">
+                            <span className="text-cyan-400 font-mono text-xs font-bold tracking-zayq">{step.n}</span>
+                            <h3 className="text-sm font-bold text-white">{step.t}</h3>
+                            <p className="text-[11px] text-slate-400 leading-relaxed">{step.d}</p>
+                        </div>
+                    ))}
+                </div>
+            </section>
+
+            <section className="max-w-6xl mx-auto px-4 space-y-6">
+                <div className="text-center space-y-2">
+                    <span className="text-[10px] font-mono font-bold text-cyan-400 uppercase tracking-zayq">Ecosystem Portals</span>
+                    <h2 className="text-3xl font-black text-white font-sans">Operate every trust surface</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                        { view: 'dashboard', title: 'Owner Dashboard', desc: 'Passports, listings, pending escrow.' },
+                        { view: 'create-passport', title: 'Create Passport', desc: 'Register identity without NFC.' },
+                        { view: 'service-portal', title: 'Service Center', desc: 'OEM repair attestations.' },
+                        { view: 'admin-console', title: 'Admin Console', desc: 'Anchors, disputes, stolen flags.' },
+                    ].map((portal) => (
+                        <button
+                            key={portal.view}
+                            onClick={() => onNavigate(portal.view)}
+                            className="zayq-glass-card rounded-2xl p-5 text-left space-y-2 zayq-card-hover"
+                        >
+                            <h3 className="text-sm font-bold text-white">{portal.title}</h3>
+                            <p className="text-[11px] text-slate-400">{portal.desc}</p>
+                            <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-zayq">Open portal →</span>
+                        </button>
+                    ))}
+                </div>
+            </section>
         </div>
     );
 };
