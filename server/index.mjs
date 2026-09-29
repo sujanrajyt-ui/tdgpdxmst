@@ -280,6 +280,10 @@ const routes = async (req, res) => {
     const model = validateText(body.model, 'Model', 140);
     const releaseYear = Number(body.releaseYear);
     if (!Number.isInteger(releaseYear) || releaseYear < 1970 || releaseYear > new Date().getFullYear() + 1) return send(res, 400, { error: 'invalid_release_year' });
+    const passportTxHash = String(body.passportTxHash || '');
+    const ownershipTxHash = String(body.ownershipTxHash || '');
+    const attestationTxHash = String(body.attestationTxHash || '');
+    if (![passportTxHash, ownershipTxHash, attestationTxHash].every(hash => /^0x[0-9a-fA-F]{64}$/.test(hash))) return send(res, 400, { error: 'missing_mst_transactions', message: 'Confirm passport, ownership, and seller-claim transactions on MST Testnet first.' });
     const existing = db.prepare('SELECT passport_id FROM passports WHERE identifier_hash=?').get(identifierHash);
     if (existing) return send(res, 409, { error: 'product_already_registered', passportId: existing.passport_id });
     const passportId = body.passportId ? String(body.passportId).trim().toUpperCase() : `PP-${randomBytes(4).readUInt32BE() % 900000 + 100000}`;
@@ -294,10 +298,12 @@ const routes = async (req, res) => {
       currentOwnerId: user.id, currentOwnerName: user.display_name || `MST user ${user.wallet_address.slice(-4)}`,
       currentOwnerDid: `did:mst:wallet:${user.wallet_address.toLowerCase()}`,
       riskLevel: 'REVIEW_REQUIRED', riskScore: 50, riskSignals: ['Backend record created; identity anchor not independently confirmed.'],
-      createdAt, updatedAt: createdAt, ownershipHistory: [], attestations: [], serviceRecords: [],
+      createdAt, updatedAt: createdAt,
+      ownershipHistory: [{ id: `OWN-${passportId}`, passportId, ownerId: user.id, ownerName: user.display_name || `MST user ${user.wallet_address.slice(-4)}`, ownerDid: `did:mst:wallet:${user.wallet_address.toLowerCase()}`, acquiredAt: createdAt, transferTxHash: ownershipTxHash, verificationLevelAtTransfer: 'OWNERSHIP_VERIFIED' }],
+      attestations: [{ id: `ATT-${passportId}`, passportId, claim: 'SELLER_REPORTED', issuerId: user.id, issuerName: user.display_name || `MST user ${user.wallet_address.slice(-4)}`, issuerRole: user.role, issuerDid: `did:mst:wallet:${user.wallet_address.toLowerCase()}`, evidenceHash: identifierHash, evidenceSummary: 'Seller-reported product identifier hash.', timestamp: createdAt, mstTxHash: attestationTxHash, status: 'VALID' }], serviceRecords: [],
       inspectionRecords: [], lifecycleHistory: [], disputes: [],
       conditionReport: { display: 'GOOD', body: 'GOOD', batteryHealthPct: 0, keyboardPorts: 'GOOD', aiObservationNotes: [] },
-      chainStatus: 'UNANCHORED',
+      chainStatus: 'ANCHORED', passportTxHash, ownershipTxHash, attestationTxHash,
     };
     db.prepare('INSERT INTO passports(passport_id,owner_wallet,identifier_hash,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?)').run(passportId, user.wallet_address, identifierHash, JSON.stringify(payload), createdAt, createdAt);
     audit(user, 'PASSPORT_CREATED', passportId);
@@ -336,6 +342,7 @@ const routes = async (req, res) => {
       title: validateText(body.title, 'Title', 160), description: String(body.description || '').trim().slice(0, 4000),
       price, currency: 'INR', location: validateText(body.location, 'Location', 120),
       status: 'PENDING_REVIEW', listedAt: createdAt, createdAt,
+      mstTxHash: /^0x[0-9a-fA-F]{64}$/.test(String(body.mstTxHash || '')) ? body.mstTxHash : '',
     };
     db.prepare('INSERT INTO listings(listing_id,passport_id,seller_wallet,status,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?)').run(listingId, passportId, user.wallet_address, listing.status, JSON.stringify(listing), createdAt, createdAt);
     audit(user, 'LISTING_SUBMITTED', listingId);

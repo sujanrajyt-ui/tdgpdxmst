@@ -202,6 +202,10 @@ export interface ProductPassport {
     lifecycleHistory: LifecycleEvent[];
     disputes: DisputeRecord[];
     conditionReport: ConditionReport;
+    chainStatus?: 'ANCHORED' | 'UNANCHORED';
+    passportTxHash?: string;
+    ownershipTxHash?: string;
+    attestationTxHash?: string;
 }
 
 export interface MarketplaceListing {
@@ -209,6 +213,7 @@ export interface MarketplaceListing {
     passportId: string;
     sellerId: string;
     buyerId?: string;
+    mstTxHash?: string;
     sellerName: string;
     sellerWallet?: string;
     sellerReputation: number;

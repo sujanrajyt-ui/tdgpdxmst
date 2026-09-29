@@ -1,13 +1,14 @@
 import { ethers } from 'ethers';
 import { getSigner, getProvider, MST_TESTNET_CONFIG } from './wallet';
 
-/** Contract addresses are intentionally empty until the app's contracts are deployed. */
+/** Public MST Testnet deployments, verified to contain bytecode on chain. Vercel
+ * environment variables can override these values for a future redeployment. */
 export const MST_CONTRACT_ADDRESSES = {
-    ProductPassportRegistry: import.meta.env.VITE_MST_PRODUCT_PASSPORT_REGISTRY || '',
-    OwnershipRegistry: import.meta.env.VITE_MST_OWNERSHIP_REGISTRY || '',
-    AttestationRegistry: import.meta.env.VITE_MST_ATTESTATION_REGISTRY || '',
-    LifecycleRegistry: import.meta.env.VITE_MST_LIFECYCLE_REGISTRY || '',
-    ServiceRegistry: import.meta.env.VITE_MST_SERVICE_REGISTRY || '',
+    ProductPassportRegistry: import.meta.env.VITE_MST_PRODUCT_PASSPORT_REGISTRY || '0x38ca8F4d80d5882Ac0D75E6058fa5EF502b48A5C',
+    OwnershipRegistry: import.meta.env.VITE_MST_OWNERSHIP_REGISTRY || '0x6aDA1f94033eF88bD44D5125204909A0C809feA8',
+    AttestationRegistry: import.meta.env.VITE_MST_ATTESTATION_REGISTRY || '0x47A4c4E56C83Fa226f0Dd5f5327C4EBdDa11e1FC',
+    LifecycleRegistry: import.meta.env.VITE_MST_LIFECYCLE_REGISTRY || '0x480d6567d2dd395D8ff4d75e750Fdbd714b8f328',
+    ServiceRegistry: import.meta.env.VITE_MST_SERVICE_REGISTRY || '0x745795d9d6657fd9f1cE01b3880458b36ce7b4Ce',
     WarrantyRegistry: '',
     MarketplaceRegistry: '',
 };
@@ -49,7 +50,7 @@ export const CONTRACT_ABIS: Record<string, string[]> = {
     ],
 };
 
-export function getContract(contractName: keyof typeof MST_CONTRACT_ADDRESSES): ethers.Contract {
+export function getContract(contractName: keyof typeof MST_CONTRACT_ADDRESSES, write = false): ethers.Contract {
     // Listing and warranty events are recorded in the general lifecycle registry;
     // this codebase does not include separate marketplace or warranty contracts.
     const registryName = contractName === 'MarketplaceRegistry' || contractName === 'WarrantyRegistry'
@@ -59,17 +60,13 @@ export function getContract(contractName: keyof typeof MST_CONTRACT_ADDRESSES): 
     const abi = CONTRACT_ABIS[registryName];
 
     if (!address || !ethers.isAddress(address)) {
-        throw new Error(`${registryName} is not configured. Deploy the contracts and set the VITE_MST_* address in .env.local.`);
+        throw new Error(`${registryName} is not configured for MST Testnet.`);
     }
     if (!abi) throw new Error(`No contract interface is available for ${registryName}.`);
 
-    try {
-        const provider = getProvider();
-        return new ethers.Contract(address, abi, provider);
-    } catch {
-        const provider = new ethers.JsonRpcProvider(MST_TESTNET_CONFIG.rpcUrl, MST_TESTNET_CONFIG.chainId);
-        return new ethers.Contract(address, abi, provider);
-    }
+    if (write) return new ethers.Contract(address, abi, getSigner());
+    try { return new ethers.Contract(address, abi, getProvider()); }
+    catch { return new ethers.Contract(address, abi, new ethers.JsonRpcProvider(MST_TESTNET_CONFIG.rpcUrl, MST_TESTNET_CONFIG.chainId)); }
 }
 
 export class MSTContractBridge {

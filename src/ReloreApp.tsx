@@ -10,6 +10,7 @@ import { toReloreProducts } from "@/core/relore-mapping";
 import { applyToSell, createListingRecord, createPassportRecord, getAdminReviewQueue, getMyMarketplace, getPublicMarketplace, getWalletSession, reviewListing, reviewSeller, signInWithWallet, signOutFromApi, updateProfile, type AdminReviewQueue, type ApiUser } from "@/core/api";
 import type { MarketplaceListing, ProductPassport } from "@/types";
 import { connectWallet } from "@/core/mst/wallet";
+import { MSTAnchorService } from "@/core/mst/anchorService";
 
 type Page = { kind: "home" } | { kind: "product" | "passport"; id: string } | { kind: "workspace"; section: "my-products" | "sell" | "account" } | { kind: "admin" } | { kind: "not-found" };
 
@@ -27,7 +28,9 @@ const previewCatalog = (): Product[] => previewProducts.map((product) => ({ ...p
 
 export function ReloreApp() {
   const [page, setPage] = useState<Page>(() => parsePage());
-  const [items, setItems] = useState<Product[]>(import.meta.env.DEV ? previewCatalog() : []);
+  // Render clearly labelled examples immediately, including on Vercel, so a
+  // slow or unconfigured marketplace API can never leave the catalog blank.
+  const [items, setItems] = useState<Product[]>(() => previewCatalog());
   const [user, setUser] = useState<ApiUser | null>(null);
   const [myPassports, setMyPassports] = useState<ProductPassport[]>([]);
   const [myListings, setMyListings] = useState<MarketplaceListing[]>([]);
@@ -132,23 +135,29 @@ export function ReloreApp() {
     try {
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(draft.identifier.trim().toUpperCase()));
       const identifierHash = "0x" + Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      const passportId = `PP-${crypto.randomUUID().split("-")[0].toUpperCase()}`;
+      const chain = await MSTAnchorService.registerPassportAndOwnership(passportId, identifierHash);
       const passport = await createPassportRecord({
-        passportId: "",
+        passportId,
         category: draft.category,
         brand: draft.brand,
         model: draft.model,
         releaseYear: draft.releaseYear,
         imageUrl: draft.imageUrl,
         identifierHash,
+        ...chain,
       });
+      const listingPayloadHash = "0x" + Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify({ passportId, title: draft.title, price: draft.price, location: draft.location })))), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      const listingAnchor = await MSTAnchorService.anchorEvent(passportId, "LISTING_SUBMITTED", "LifecycleRegistry", listingPayloadHash);
       const listing = await createListingRecord({
         passportId: passport.passportId,
         title: draft.title,
         description: draft.description,
         price: draft.price,
         location: draft.location,
+        mstTxHash: listingAnchor.transactionHash,
       });
-      setActionMessage("Passport " + passport.passportId + " saved. Listing sent for admin review.");
+      setActionMessage(`Passport ${passport.passportId} saved on MST Testnet. Passport, ownership, seller claim, and listing transactions confirmed. Listing sent for admin review.`);
       await refreshCatalog();
       await refreshPrivate(user);
       setMyPassports((current) => [passport, ...current.filter((item) => item.passportId !== passport.passportId)]);

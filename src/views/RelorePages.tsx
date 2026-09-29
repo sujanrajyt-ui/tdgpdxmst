@@ -78,6 +78,13 @@ export function RelorePassportPage({ product }: { product: Product }) {
       <ol className="relative mt-10 border-l border-border pl-8">
         {product.timeline.map((event, i) => <Reveal key={event.year + event.label} delay={i * 90}><li className="relative pb-14"><span className="absolute -left-[33px] top-2 size-1.5 rounded-full bg-primary" /><div className="meta">{event.year}</div><div className="mt-1 font-display text-2xl tracking-tight text-foreground">{event.label}</div><p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">{event.detail}</p><div className="mt-3"><TrustTag level={event.trust} /></div></li></Reveal>)}
       </ol>
+      {product.chainTransactions?.length ? <section className="mt-16 border-t border-border pt-8">
+        <h2 className="meta text-foreground">MST Testnet transactions</h2>
+        <ul className="mt-5 space-y-4">{product.chainTransactions.map((tx) => <li key={tx.hash} className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+          <span className="meta">{tx.label} · confirmed</span>
+          <a className="meta text-primary underline" href={`https://testnet.mstscan.com/tx/${tx.hash}`} target="_blank" rel="noreferrer">{tx.hash.slice(0, 12)}…{tx.hash.slice(-8)} · View transaction</a>
+        </li>)}</ul>
+      </section> : null}
       <p className="meta mt-6 max-w-xl leading-relaxed">RELORE marks a record as verified only when it was checked against a document or transfer recorded on the platform. Everything else is labelled seller-provided or not verified.</p>
     </main>
   );

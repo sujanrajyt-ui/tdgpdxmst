@@ -28,6 +28,80 @@ export class MSTAnchorService {
         return this.anchors.filter(anchor => anchor.passportId === passportId);
     }
 
+    private static saveConfirmedAnchor(passportId: string, eventId: string, contractName: MSTAnchor['contractName'], contractAddress: string, txHash: string, blockNumber: number, payloadHash: string): MSTAnchor {
+        const timestamp = new Date().toISOString();
+        const anchor: MSTAnchor = {
+            id: `ANC-${crypto.randomUUID()}`, eventId, passportId, chain: 'MST_TESTNET', contractAddress,
+            contractName, transactionHash: txHash, blockNumber, status: 'CONFIRMED', simulated: false,
+            createdAt: timestamp, confirmedAt: timestamp, payloadHash,
+        };
+        this.anchors.unshift(anchor);
+        this.saveAnchors();
+        return anchor;
+    }
+
+    /** Register a new passport and its initial owner in two real, wallet-approved MST transactions. */
+    public static async registerPassportAndOwnership(passportId: string, identifierHash: string): Promise<{ passportTxHash: string; ownershipTxHash: string; attestationTxHash: string }> {
+        const wallet = getWalletState();
+        if (!wallet.connected || !wallet.signer || wallet.chainId !== 91562037) {
+            throw new Error('Connect BridgeKey to MST Testnet before creating an on-chain passport.');
+        }
+        if (!ethers.isHexString(identifierHash, 32)) throw new Error('The product identifier hash must be 32 bytes.');
+        const passport = getContract('ProductPassportRegistry', true);
+        if (await passport.passportExists(passportId)) throw new Error(`Passport ${passportId} is already registered on MST.`);
+        const passportTx = await passport.registerPassport(passportId, identifierHash);
+        const passportReceipt = await passportTx.wait();
+        if (!passportReceipt || passportReceipt.status !== 1) throw new Error('MST did not confirm passport registration.');
+        this.saveConfirmedAnchor(passportId, 'PASSPORT_REGISTERED', 'ProductPassportRegistry', MST_CONTRACT_ADDRESSES.ProductPassportRegistry, passportReceipt.hash, passportReceipt.blockNumber, identifierHash);
+
+        const ownership = getContract('OwnershipRegistry', true);
+        const ownershipTx = await ownership.registerOwnership(passportId);
+        const ownershipReceipt = await ownershipTx.wait();
+        if (!ownershipReceipt || ownershipReceipt.status !== 1) throw new Error('Passport exists on MST, but initial ownership registration was not confirmed. Retry ownership registration before listing.');
+        this.saveConfirmedAnchor(passportId, 'OWNERSHIP_REGISTERED', 'OwnershipRegistry', MST_CONTRACT_ADDRESSES.OwnershipRegistry, ownershipReceipt.hash, ownershipReceipt.blockNumber, identifierHash);
+
+        const attestation = getContract('AttestationRegistry', true);
+        const attestationTx = await attestation.addAttestation(passportId, 'SELLER_REPORTED', identifierHash);
+        const attestationReceipt = await attestationTx.wait();
+        if (!attestationReceipt || attestationReceipt.status !== 1) throw new Error('Passport and ownership are on MST, but the seller-reported identity claim was not confirmed.');
+        this.saveConfirmedAnchor(passportId, 'SELLER_REPORTED', 'AttestationRegistry', MST_CONTRACT_ADDRESSES.AttestationRegistry, attestationReceipt.hash, attestationReceipt.blockNumber, identifierHash);
+        return { passportTxHash: passportReceipt.hash, ownershipTxHash: ownershipReceipt.hash, attestationTxHash: attestationReceipt.hash };
+    }
+
+    public static async initiateOwnershipTransfer(passportId: string, buyerAddress: string): Promise<MSTAnchor> {
+        const wallet = getWalletState();
+        if (!wallet.connected || !wallet.signer || wallet.chainId !== 91562037) throw new Error('Connect the seller wallet to MST Testnet first.');
+        if (!ethers.isAddress(buyerAddress)) throw new Error('Enter a valid buyer wallet address.');
+        const contract = getContract('OwnershipRegistry', true);
+        const tx = await contract.initiateTransfer(passportId, ethers.getAddress(buyerAddress));
+        const receipt = await tx.wait();
+        if (!receipt || receipt.status !== 1) throw new Error('MST did not confirm the ownership transfer request.');
+        return this.saveConfirmedAnchor(passportId, 'TRANSFER_INITIATED', 'OwnershipRegistry', MST_CONTRACT_ADDRESSES.OwnershipRegistry, receipt.hash, receipt.blockNumber, ethers.id(ethers.getAddress(buyerAddress).toLowerCase()));
+    }
+
+    public static async getPendingOwnershipTransfer(passportId: string): Promise<{ seller: string; buyer: string; txHash: string } | null> {
+        const contract = getContract('OwnershipRegistry');
+        const initiated = await contract.queryFilter(contract.filters.TransferInitiated(passportId));
+        const completed = await contract.queryFilter(contract.filters.TransferCompleted(passportId));
+        const latestInitiated = initiated.at(-1);
+        const latestCompleted = completed.at(-1);
+        if (!latestInitiated || (latestCompleted && (latestCompleted.blockNumber > latestInitiated.blockNumber || (latestCompleted.blockNumber === latestInitiated.blockNumber && latestCompleted.index > latestInitiated.index)))) return null;
+        const args = (latestInitiated as ethers.EventLog).args;
+        return { seller: String(args.seller), buyer: String(args.buyer), txHash: latestInitiated.transactionHash };
+    }
+
+    public static async completeOwnershipTransfer(passportId: string): Promise<MSTAnchor> {
+        const wallet = getWalletState();
+        if (!wallet.connected || !wallet.signer || wallet.chainId !== 91562037) throw new Error('Connect the buyer wallet to MST Testnet first.');
+        const pending = await this.getPendingOwnershipTransfer(passportId);
+        if (!pending || pending.buyer.toLowerCase() !== (await wallet.signer.getAddress()).toLowerCase()) throw new Error('This wallet is not the buyer on the pending transfer.');
+        const contract = getContract('OwnershipRegistry', true);
+        const tx = await contract.completeTransfer(passportId);
+        const receipt = await tx.wait();
+        if (!receipt || receipt.status !== 1) throw new Error('MST did not confirm the ownership change.');
+        return this.saveConfirmedAnchor(passportId, 'TRANSFER_COMPLETED', 'OwnershipRegistry', MST_CONTRACT_ADDRESSES.OwnershipRegistry, receipt.hash, receipt.blockNumber, ethers.id(pending.buyer.toLowerCase()));
+    }
+
     /** Local activity is explicitly LOCAL_ONLY. Connected-wallet errors are never converted into fake receipts. */
     public static async anchorEvent(
         passportId: string,
@@ -41,47 +115,11 @@ export class MSTAnchorService {
 
         if (_forceFail) throw new Error('This activity was rejected and was not saved.');
 
-        if (!wallet.connected || !wallet.signer || wallet.chainId !== 91562037) {
-            const localRecord: MSTAnchor = {
-                id: `LOCAL-${crypto.randomUUID()}`,
-                eventId,
-                passportId,
-                chain: 'MST_TESTNET',
-                contractAddress: MST_CONTRACT_ADDRESSES[contractName] || '',
-                contractName,
-                transactionHash: '',
-                blockNumber: 0,
-                status: 'LOCAL_ONLY',
-                simulated: true,
-                createdAt: now,
-                payloadHash,
-                errorMessage: 'Saved in this browser only. Connect an MST Testnet wallet and configure deployed contracts to write on-chain.',
-            };
-            this.anchors.unshift(localRecord);
-            this.saveAnchors();
-            return localRecord;
-        }
+        if (!wallet.connected || !wallet.signer || wallet.chainId !== 91562037) throw new Error('Connect BridgeKey to MST Testnet before recording this event.');
 
-        const payloadBytes32 = ethers.id(payloadHash);
+        const payloadBytes32 = ethers.isHexString(payloadHash, 32) ? payloadHash : ethers.id(payloadHash);
         const txResult = await this.executeRealAnchor(passportId, eventId, contractName, payloadBytes32);
-        const anchor: MSTAnchor = {
-            id: `ANC-${crypto.randomUUID()}`,
-            eventId,
-            passportId,
-            chain: 'MST_TESTNET',
-            contractAddress: txResult.contractAddress,
-            contractName,
-            transactionHash: txResult.txHash,
-            blockNumber: txResult.blockNumber,
-            status: 'CONFIRMED',
-            simulated: false,
-            createdAt: now,
-            confirmedAt: now,
-            payloadHash: payloadBytes32,
-        };
-        this.anchors.unshift(anchor);
-        this.saveAnchors();
-        return anchor;
+        return this.saveConfirmedAnchor(passportId, eventId, contractName, txResult.contractAddress, txResult.txHash, txResult.blockNumber, payloadBytes32);
     }
 
     private static async executeRealAnchor(
@@ -97,7 +135,7 @@ export class MSTAnchorService {
         };
 
         if (contractName === 'ProductPassportRegistry') {
-            const passportContract = getContract('ProductPassportRegistry');
+            const passportContract = getContract('ProductPassportRegistry', true);
             const alreadyRegistered = await passportContract.passportExists(passportId);
             if (alreadyRegistered) throw new Error('This passport ID is already registered on MST.');
             const tx = await passportContract.registerPassport(passportId, payloadHash);
@@ -111,7 +149,7 @@ export class MSTAnchorService {
         const registry = contractName === 'MarketplaceRegistry' || contractName === 'WarrantyRegistry'
             ? 'LifecycleRegistry'
             : contractName;
-        const contract = getContract(registry);
+        const contract = getContract(registry, true);
         let tx: ethers.ContractTransactionResponse;
         if (registry === 'AttestationRegistry') tx = await contract.addAttestation(passportId, eventId, payloadHash);
         else if (registry === 'ServiceRegistry') tx = await contract.recordService(passportId, eventId, payloadHash);

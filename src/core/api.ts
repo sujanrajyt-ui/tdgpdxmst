@@ -10,7 +10,11 @@ export interface ApiUser {
     createdAt: string;
 }
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') || '';
+// Production serves /api from Vercel Functions on the same origin. Keep the
+// configurable base only for local development against a separately hosted API.
+const API_BASE_URL = import.meta.env.DEV
+  ? (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') || ''
+  : '';
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -87,6 +91,9 @@ export async function createPassportRecord(input: {
     releaseYear: number;
     imageUrl: string;
     identifierHash: string;
+    passportTxHash: string;
+    ownershipTxHash: string;
+    attestationTxHash: string;
 }): Promise<ProductPassport> {
     const result = await request<{ passport: ProductPassport }>('/api/passports', { method: 'POST', body: JSON.stringify(input) });
     return result.passport;
@@ -98,6 +105,7 @@ export async function createListingRecord(input: {
     location: string;
     title: string;
     description: string;
+    mstTxHash: string;
 }): Promise<MarketplaceListing> {
     const result = await request<{ listing: MarketplaceListing }>('/api/listings', { method: 'POST', body: JSON.stringify(input) });
     return result.listing;

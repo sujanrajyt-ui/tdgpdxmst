@@ -41,6 +41,7 @@ export type Product = {
   owners: number;
   serviceEvents: number;
   timeline: TimelineEvent[];
+  chainTransactions?: Array<{ label: string; hash: string }>;
 };
 
 const baseTimeline = (y0: string): TimelineEvent[] => [

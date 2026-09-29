@@ -571,12 +571,9 @@ export class AppStore {
         await WASMifyBridge.executeVerificationProof(passportId, 'SERIAL_INTEGRITY_CHECK', identifierObj);
 
         // Anchor on MST ProductPassportRegistry
-        const anchor = await MSTAnchorService.anchorEvent(
-            passportId,
-            `EVT-REGISTER-${passportId}`,
-            'ProductPassportRegistry',
-            hashedIdentifier
-        );
+        const chain = await MSTAnchorService.registerPassportAndOwnership(passportId, hashedIdentifier);
+        const anchor = MSTAnchorService.getAnchorsForPassport(passportId).find(item => item.contractName === 'ProductPassportRegistry');
+        if (!anchor) throw new Error('MST passport transaction is missing from the confirmed transaction history.');
 
         const initialLifecycle: LifecycleEvent = {
             id: `LFC-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -662,6 +659,7 @@ export class AppStore {
                 releaseYear: data.releaseYear,
                 imageUrl: newPassport.imageUrl,
                 identifierHash: hashedIdentifier,
+                ...chain,
             });
         }
 
@@ -708,8 +706,9 @@ export class AppStore {
             escrowStatus: 'IDLE'
         };
 
+        const listingAnchor = await MSTAnchorService.anchorEvent(passportId, `EVT-LIST-${listingId}`, 'MarketplaceRegistry', keccak256(JSON.stringify({ passportId, price, location, title })));
         if (seller.walletAddress) {
-            const sharedListing = await createListingRecord({ passportId, price, location, title, description });
+            const sharedListing = await createListingRecord({ passportId, price, location, title, description, mstTxHash: listingAnchor.transactionHash });
             Object.assign(listing, sharedListing);
         }
 
@@ -718,12 +717,7 @@ export class AppStore {
         passport.updatedAt = now;
 
         // Anchor event
-        const anchor = await MSTAnchorService.anchorEvent(
-            passportId,
-            `EVT-LIST-${listingId}`,
-            'MarketplaceRegistry',
-            `0xLIST_${listingId}`
-        );
+        const anchor = listingAnchor;
 
         passport.lifecycleHistory.unshift({
             id: `LFC-${Math.floor(1000 + Math.random() * 9000)}`,

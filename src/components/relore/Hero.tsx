@@ -10,18 +10,8 @@ const seg = (p: number, a: number, b: number) => clamp((p - a) / (b - a));
 export function Hero({ product }: { product?: Product }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [p, setP] = useState(0);
-  const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-
-  useEffect(() => {
-    if (reduced) return;
     let frame = 0;
     const update = () => {
       frame = 0;
@@ -42,9 +32,7 @@ export function Hero({ product }: { product?: Product }) {
       window.removeEventListener("resize", onScroll);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [reduced]);
-
-  if (reduced) return <StaticHero />;
+  }, []);
 
   const intro = seg(p, 0, 0.22);
   const open = seg(p, 0.28, 0.6);
@@ -99,7 +87,7 @@ export function Hero({ product }: { product?: Product }) {
               aria-hidden="true"
               width={1536}
               height={1024}
-              loading="lazy"
+              loading="eager"
               className="absolute inset-0 w-full"
               style={{
                 opacity: open,
@@ -119,7 +107,7 @@ export function Hero({ product }: { product?: Product }) {
               className="block"
               style={{ transform: `translateY(${-intro * 22}vh) translateX(${-intro * 4}vw)` }}
             >
-              Every device
+              Every object
             </span>
             <span
               className="block"
@@ -129,14 +117,14 @@ export function Hero({ product }: { product?: Product }) {
             </span>
           </h1>
           <p className="meta mt-8" style={{ opacity: 1 - intro }}>
-            Product identity · Seller details · One passport
+            Used · Verified · Documented
           </p>
         </div>
 
         {/* Word sequence */}
         <BigWord label="Used" enter={used} exit={reported} />
-        <BigWord label="Reported" enter={reported} exit={recorded} />
-        <BigWord label="Recorded" enter={recorded} exit={passport} />
+        <BigWord label="Verified" enter={reported} exit={recorded} />
+        <BigWord label="Documented" enter={recorded} exit={passport} />
 
         {/* Passport metadata */}
         <div
@@ -165,9 +153,9 @@ export function Hero({ product }: { product?: Product }) {
           style={{ opacity: remembers * (1 - next) }}
         >
           <h2 className="editorial text-[11vw] leading-[0.88] text-foreground sm:text-[6.5vw]">
-            See what&apos;s
+            It remembers
             <br />
-            on record.
+            where it&apos;s been.
           </h2>
         </div>
 
@@ -212,27 +200,5 @@ function BigWord({ label, enter, exit }: { label: string; enter: number; exit: n
         {label}
       </span>
     </div>
-  );
-}
-
-function StaticHero() {
-  return (
-    <section className="grain relative flex min-h-[80vh] items-center justify-center overflow-hidden px-5">
-      <img
-        src={closedLaptop}
-        alt="A closed laptop in a dark studio"
-        width={1536}
-        height={1024}
-        className="absolute w-[min(92vw,1000px)] opacity-70"
-      />
-      <div className="relative z-10 text-center">
-        <h1 className="editorial text-[13vw] leading-[0.85] text-foreground sm:text-[8vw]">
-          Every device
-          <br />
-          has a story.
-        </h1>
-        <p className="meta mt-8">Product identity · Seller details · One passport</p>
-      </div>
-    </section>
   );
 }

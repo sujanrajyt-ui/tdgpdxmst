@@ -2,6 +2,8 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { formatPrice, type Product } from "@/lib/relore-market-data";
 import type { ApiUser } from "@/core/api";
 import type { MarketplaceListing, ProductCategory, ProductPassport } from "@/types";
+import { connectWallet } from "@/core/mst/wallet";
+import { MSTAnchorService } from "@/core/mst/anchorService";
 
 type WorkspaceProps = {
   user: ApiUser | null;
@@ -109,11 +111,29 @@ function MyProductsPage({ user, passports, listings, previewItems, onConnect }: 
           {passports.map((passport) => {
             const listing = listings.find((entry) => entry.passportId === passport.passportId);
             const product = listing ? previewItems.find((p) => p.id === listing.id) : undefined;
-            return <article key={passport.passportId} className="border-t border-border py-5"><div className="meta">{passport.passportId}</div><h2 className="mt-3 font-display text-xl">{listing?.title || (passport.brand + " " + passport.model)}</h2><p className="meta mt-2">{listing ? listing.status.replace(/_/g, " ") + " · " + formatPrice(listing.price) : "Passport only"}</p><a href={product ? "/product/" + encodeURIComponent(product.id) : "/passport/" + encodeURIComponent(passport.passportId)} className="meta mt-5 inline-block text-primary underline">{product ? "View listing" : "View passport"}</a></article>;
+            const transactions = [passport.passportTxHash, passport.ownershipTxHash, passport.attestationTxHash, listing?.mstTxHash].filter((hash): hash is string => Boolean(hash));
+            return <article key={passport.passportId} className="border-t border-border py-5"><div className="meta">{passport.passportId}</div><h2 className="mt-3 font-display text-xl">{listing?.title || (passport.brand + " " + passport.model)}</h2><p className="meta mt-2">{listing ? listing.status.replace(/_/g, " ") + " · " + formatPrice(listing.price) : "Passport only"}</p><a href={product ? "/product/" + encodeURIComponent(product.id) : "/passport/" + encodeURIComponent(passport.passportId)} className="meta mt-5 inline-block text-primary underline">{product ? "View listing" : "View passport"}</a>{transactions.length ? <div className="mt-5 border-t border-border pt-4"><p className="meta text-foreground">MST Testnet · {transactions.length} confirmed transaction{transactions.length === 1 ? "" : "s"}</p><ul className="mt-3 space-y-2">{transactions.map((hash, index) => <li key={hash}><a className="meta text-primary underline" href={`https://testnet.mstscan.com/tx/${hash}`} target="_blank" rel="noreferrer">Transaction {index + 1} · {hash.slice(0, 10)}…{hash.slice(-6)}</a></li>)}</ul></div> : null}<OwnershipTransferStart passportId={passport.passportId} sellerWallet={user.walletAddress} /></article>;
           })}
         </div>}
     </section>
   );
+}
+
+function OwnershipTransferStart({ passportId, sellerWallet }: { passportId: string; sellerWallet: string }) {
+  const [buyer, setBuyer] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const start = async () => {
+    setBusy(true); setMessage("");
+    try {
+      const wallet = await connectWallet();
+      if (wallet.address?.toLowerCase() !== sellerWallet.toLowerCase()) throw new Error("Connect the seller wallet that owns this passport.");
+      const anchor = await MSTAnchorService.initiateOwnershipTransfer(passportId, buyer.trim());
+      setMessage(`Transfer started. Buyer must confirm. ${anchor.transactionHash}`);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not start transfer."); }
+    finally { setBusy(false); }
+  };
+  return <div className="mt-6 border-t border-border pt-4"><p className="meta text-foreground">Transfer ownership on MST</p><p className="meta mt-2">Enter the buyer’s wallet. They must connect and confirm the transfer on the passport page.</p><input value={buyer} onChange={(event) => setBuyer(event.target.value)} placeholder="Buyer wallet address" className="mt-3 w-full border border-border bg-background px-3 py-3 font-mono text-xs text-foreground"/><button type="button" disabled={busy || !buyer.trim()} onClick={() => void start()} className="meta mt-3 bg-primary px-4 py-3 text-primary-foreground disabled:opacity-50">{busy ? "Waiting for wallet…" : "Start MST transfer"}</button>{message ? <p role="status" className="meta mt-3 break-all">{message}</p> : null}</div>;
 }
 
 function AccountPage({ user, onConnect, onSaveName, onSignOut, busy, message }: WorkspaceProps) {

@@ -81,6 +81,12 @@ export function toReloreProduct(passport: ProductPassport, listing: MarketplaceL
     owners: Math.max(1, passport.ownershipHistory?.length ?? 0),
     serviceEvents: serviceEvents.length,
     timeline,
+    chainTransactions: [
+      passport.passportTxHash && { label: 'Passport registration', hash: passport.passportTxHash },
+      passport.ownershipTxHash && { label: 'Initial ownership', hash: passport.ownershipTxHash },
+      passport.attestationTxHash && { label: 'Seller-reported identity claim', hash: passport.attestationTxHash },
+      listing.mstTxHash && { label: 'Listing lifecycle event', hash: listing.mstTxHash },
+    ].filter((item): item is { label: string; hash: string } => Boolean(item)),
     sellerWallet: listing.sellerWallet,
   };
 }
