@@ -1,4 +1,4 @@
-export type ProductCategory = 'SMARTPHONE' | 'LAPTOP';
+export type ProductCategory = 'SMARTPHONE' | 'LAPTOP' | 'CAMERA' | 'FURNITURE' | 'OTHER';
 
 export type VerificationLevel =
     | 'SELLER_REPORTED'
@@ -210,6 +210,7 @@ export interface MarketplaceListing {
     sellerId: string;
     buyerId?: string;
     sellerName: string;
+    sellerWallet?: string;
     sellerReputation: number;
     sellerDid: string;
     price: number; // In INR or USD
@@ -219,6 +220,7 @@ export interface MarketplaceListing {
     description: string;
     status: 'PENDING_REVIEW' | 'ACTIVE' | 'PENDING_TRANSFER' | 'SOLD' | 'CANCELLED' | 'REJECTED';
     listedAt: string;
+    createdAt?: string;
     escrowStatus?: 'IDLE' | 'PURCHASE_STARTED' | 'HANDOVER_CONFIRMED' | 'RELEASED';
     handoverCodeSeller?: string;
     handoverCodeBuyer?: string;

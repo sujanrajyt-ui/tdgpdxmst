@@ -18,9 +18,28 @@ npm run api
 npm run dev
 ```
 
+## Deploy: Vercel frontend + Railway API
+
+Keep the Vercel and Railway deployments separate. The Vercel app is a static Vite SPA; `vercel.json` rewrites app routes to `index.html`. The API stays in `server/index.mjs` and listens on Railway's `PORT`.
+
+**Vercel environment variables** (set for Production, then redeploy):
+
+- `VITE_API_BASE_URL=https://<your-railway-service-domain>`
+
+**Railway service:** use the repository root, install with `npm ci`, start with `npm run api`, and set the health check path to `/api/health`. Add a persistent volume mounted at `/data`, then set:
+
+- `NODE_ENV=production`
+- `API_HOST=0.0.0.0`
+- `DATA_DIR=/data`
+- `APP_ORIGINS=https://<your-vercel-domain>` (comma-separate any other exact allowed origins)
+- `COOKIE_SAME_SITE=none` when using separate `vercel.app` and `railway.app` domains
+- `ADMIN_WALLETS=<comma-separated-public-admin-wallets>`
+
+The API uses an HttpOnly session cookie and credentialed CORS; do not use `*` for `APP_ORIGINS`. Browser privacy protections can block cross-site cookies on the default Vercel/Railway domains. For the most reliable wallet session, attach frontend and API custom domains under the same parent domain (for example `shop.example.com` and `api.example.com`), allow the frontend origin, and set `COOKIE_SAME_SITE=lax`. SQLite on a Railway volume is suitable for a single API instance; migrate to managed PostgreSQL before scaling horizontally.
+
 The API stores accounts, passports, listings, seller applications, evidence metadata/files, sessions, and admin audit events in `.data/marketplace.sqlite` and `.data/evidence/`. The Vite dev server proxies `/api` to the API. Wallet sign-in uses a one-time server nonce and an EVM signature; signatures do not send transactions. Add public admin wallet addresses to `ADMIN_WALLETS` in the ignored local `.env` file.
 
-The React screens still use the browser store for their catalog and demo workflows. The API exposes authenticated write endpoints, but those screens have not yet been migrated to load and mutate the shared records. Do not mistake local display data for shared marketplace data.
+The imported marketplace catalog, product pages, passport verification, seller listing flow, My Products, account, and admin review screen use the shared API. During local development only, sample catalog cards appear if the API is unavailable or has no public listings; production does not show those samples. Checkout and payment are intentionally not enabled.
 
 ### Backend API
 
@@ -34,7 +53,7 @@ The local SQLite database is suitable for development on one machine. Before a p
 
 ## MST Testnet transactions
 
-The app targets MST Testnet (`https://testnetrpc.mstblockchain.com`, chain ID `91562037`, tMSTC). Connect an EVM wallet from the header. Each real write asks the connected wallet to approve the transaction. Without a connected wallet, actions are stored as `LOCAL_ONLY` and have no transaction hash.
+The optional contract tools target MST Testnet (`https://testnetrpc.mstblockchain.com`, chain ID `91562037`, tMSTC). The marketplace itself currently saves passport and listing records to the Railway API after wallet sign-in; creating these records does not write them to MST. A deployed contract address or a wallet connection alone does not make a marketplace record on-chain.
 
 To deploy the included contracts:
 
@@ -43,11 +62,11 @@ To deploy the included contracts:
 3. Run `npx hardhat compile` and `npx hardhat run scripts/deploy.ts --network testnet`.
 4. Copy the printed registry addresses into `.env.local` using the `VITE_MST_*` variable names in `.env.example`, then restart Vite.
 
-The contract addresses in the browser are intentionally blank until a deployment is configured. No contracts are deployed by this repository setup. Listing and warranty events use `LifecycleRegistry`; they are not separate contracts. Marketplace listings themselves remain local data.
+The browser contract addresses are configured from the `VITE_MST_*` environment variables. Listing and warranty events use `LifecycleRegistry`; they are not separate contracts. Listing publication remains subject to the admin review queue.
 
 ## Before a public launch
 
-- Migrate React screens from browser storage to the API; the API currently exists alongside the local demo store.
+- Add production monitoring, a user-facing support/contact path, and final browser checks against the deployed Vercel and Railway domains.
 - Configure a real payment provider adapter, signed webhooks, settlements, refunds, cancellations, chargebacks, and disputes. Checkout is intentionally disabled until an adapter is implemented.
 - Add an on-chain event indexer and reconciliation worker after deploying and configuring the registry contracts.
 - Complete and review the two-party on-chain ownership transfer workflow. The current UI's one-step transfer is local demo behavior and is blocked from claiming an on-chain ownership transfer.
@@ -55,4 +74,4 @@ The contract addresses in the browser are intentionally blank until a deployment
 - Review and secure the contracts before mainnet use. Some on-chain registry write methods still lack issuer/admin access controls.
 - Validate deployed contract addresses and source code on the explorer; define admin-key rotation, incident response, and recovery procedures.
 
-This repository now includes a local backend foundation and optional wallet-to-contract path. The marketplace UI, checkout, event indexing, and deployed contracts are not yet production-ready.
+This repository includes the imported marketplace UI and an API foundation. Checkout, event indexing, and deployed contracts are not yet production-ready.

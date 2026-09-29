@@ -8,6 +8,17 @@ export default {
     theme: {
         extend: {
             colors: {
+                background: 'oklch(0.17 0.017 157 / <alpha-value>)',
+                foreground: 'oklch(0.96 0.006 140 / <alpha-value>)',
+                surface: 'oklch(0.21 0.019 157 / <alpha-value>)',
+                'surface-2': 'oklch(0.25 0.021 157 / <alpha-value>)',
+                border: 'oklch(0.3 0.016 157 / <alpha-value>)',
+                primary: 'oklch(0.82 0.15 140 / <alpha-value>)',
+                'primary-foreground': 'oklch(0.18 0.03 157 / <alpha-value>)',
+                'muted-foreground': 'oklch(0.7 0.015 150 / <alpha-value>)',
+                verified: 'oklch(0.82 0.15 140 / <alpha-value>)',
+                pending: 'oklch(0.82 0.13 85 / <alpha-value>)',
+                unverified: 'oklch(0.68 0.02 150 / <alpha-value>)',
                 brand: {
                     50: '#f0f4ff',
                     100: '#e0e8ff',
@@ -31,8 +42,12 @@ export default {
                 }
             },
             fontFamily: {
+                display: ['Archivo', 'Helvetica Neue', 'sans-serif'],
                 sans: ['Inter', 'Outfit', 'sans-serif'],
                 mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+            },
+            transitionTimingFunction: {
+                cine: 'cubic-bezier(0.22, 1, 0.36, 1)',
             },
             animation: {
                 'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

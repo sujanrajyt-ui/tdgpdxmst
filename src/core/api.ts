@@ -10,10 +10,12 @@ export interface ApiUser {
     createdAt: string;
 }
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') || '';
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const response = await fetch(path, {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
         ...init,
-        credentials: 'same-origin',
+        credentials: 'include',
         headers: { 'content-type': 'application/json', ...init.headers },
     });
     const body = await response.json().catch(() => ({}));
@@ -45,6 +47,11 @@ export async function getWalletSession(): Promise<ApiUser | null> {
     } catch {
         return null;
     }
+}
+
+export async function updateProfile(name: string): Promise<ApiUser> {
+    const result = await request<{ user: ApiUser }>('/api/me', { method: 'PATCH', body: JSON.stringify({ name }) });
+    return result.user;
 }
 
 export async function signOutFromApi(): Promise<void> {

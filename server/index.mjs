@@ -98,6 +98,9 @@ const sha256 = value => createHash('sha256').update(value).digest('hex');
 const admins = new Set((process.env.ADMIN_WALLETS || '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean));
 const allowedOrigins = new Set((process.env.APP_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173').split(',').map(v => v.trim()).filter(Boolean));
 const sessionHours = Number(process.env.SESSION_HOURS || 24);
+const cookieSameSite = ['lax', 'none', 'strict'].includes((process.env.COOKIE_SAME_SITE || '').toLowerCase())
+  ? process.env.COOKIE_SAME_SITE.toLowerCase()
+  : (process.env.NODE_ENV === 'production' ? 'none' : 'lax');
 const cookieName = 'passport_session';
 const rateBuckets = new Map();
 
@@ -220,14 +223,15 @@ const routes = async (req, res) => {
     const token = randomBytes(32).toString('base64url');
     const expiresAt = Date.now() + sessionHours * 60 * 60_000;
     db.prepare('INSERT INTO sessions(token_hash,user_id,expires_at,created_at) VALUES(?,?,?,?)').run(sha256(token), user.id, expiresAt, timestamp);
-    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-    return send(res, 200, { user: publicUser(user) }, { 'set-cookie': `${cookieName}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${sessionHours * 3600}${secure}` });
+    const secure = process.env.NODE_ENV === 'production' || cookieSameSite === 'none' ? '; Secure' : '';
+    return send(res, 200, { user: publicUser(user) }, { 'set-cookie': `${cookieName}=${encodeURIComponent(token)}; HttpOnly; SameSite=${cookieSameSite[0].toUpperCase()}${cookieSameSite.slice(1)}; Path=/; Max-Age=${sessionHours * 3600}${secure}` });
   }
 
   if (method === 'POST' && path === '/api/auth/logout') {
     const token = parseCookies(req.headers.cookie)[cookieName];
     if (token) db.prepare('DELETE FROM sessions WHERE token_hash=?').run(sha256(token));
-    return send(res, 200, { ok: true }, { 'set-cookie': `${cookieName}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0` });
+    const secure = process.env.NODE_ENV === 'production' || cookieSameSite === 'none' ? '; Secure' : '';
+    return send(res, 200, { ok: true }, { 'set-cookie': `${cookieName}=; HttpOnly; SameSite=${cookieSameSite[0].toUpperCase()}${cookieSameSite.slice(1)}; Path=/; Max-Age=0${secure}` });
   }
 
   if (method === 'GET' && path === '/api/me') {
@@ -271,7 +275,7 @@ const routes = async (req, res) => {
     const identifierHash = String(body.identifierHash || '').toLowerCase();
     if (!/^0x[0-9a-f]{64}$/.test(identifierHash)) return send(res, 400, { error: 'invalid_identifier_hash', message: 'Send only a 32-byte hash, never a serial number or IMEI.' });
     const category = body.category;
-    if (!['SMARTPHONE', 'LAPTOP'].includes(category)) return send(res, 400, { error: 'invalid_category' });
+    if (!['SMARTPHONE', 'LAPTOP', 'CAMERA', 'FURNITURE', 'OTHER'].includes(category)) return send(res, 400, { error: 'invalid_category' });
     const brand = validateText(body.brand, 'Brand', 80);
     const model = validateText(body.model, 'Model', 140);
     const releaseYear = Number(body.releaseYear);
@@ -432,6 +436,19 @@ const routes = async (req, res) => {
 };
 
 const server = createServer((req, res) => {
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins.has(origin)) {
+    send(res, 403, { error: 'origin_not_allowed' });
+    return;
+  }
+  if (origin) {
+    res.setHeader('access-control-allow-origin', origin);
+    res.setHeader('access-control-allow-credentials', 'true');
+    res.setHeader('access-control-allow-methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+    res.setHeader('access-control-allow-headers', 'content-type');
+    res.setHeader('access-control-max-age', '600');
+    res.setHeader('vary', 'Origin');
+  }
   routes(req, res).catch(error => {
     console.error('API request failed:', error?.message || error);
     if (!res.headersSent) send(res, error.status || 500, { error: error.status ? 'invalid_request' : 'internal_error', message: error.status ? error.message : 'The server could not complete the request.' });
@@ -439,8 +456,9 @@ const server = createServer((req, res) => {
   });
 });
 
-const port = Number(process.env.API_PORT || 8787);
-server.listen(port, process.env.API_HOST || '127.0.0.1', () => console.log(`Marketplace API listening on http://${process.env.API_HOST || '127.0.0.1'}:${port}`));
+const port = Number(process.env.PORT || process.env.API_PORT || 8787);
+const host = process.env.API_HOST || (process.env.PORT ? '0.0.0.0' : '127.0.0.1');
+server.listen(port, host, () => console.log(`Marketplace API listening on http://${host}:${port}`));
 
 function shutdown() { server.close(() => { db.close(); process.exit(0); }); }
 process.on('SIGINT', shutdown);

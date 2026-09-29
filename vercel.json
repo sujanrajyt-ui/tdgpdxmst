@@ -1,0 +1,10 @@
+{
+  "rewrites": [
+    { "source": "/product/:path*", "destination": "/index.html" },
+    { "source": "/passport/:path*", "destination": "/index.html" },
+    { "source": "/sell", "destination": "/index.html" },
+    { "source": "/my-products", "destination": "/index.html" },
+    { "source": "/account", "destination": "/index.html" },
+    { "source": "/admin", "destination": "/index.html" }
+  ]
+}
