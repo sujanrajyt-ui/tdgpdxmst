@@ -50,6 +50,21 @@ function SellPage({ user, busy, message, onConnect, onPublish }: WorkspaceProps)
   const [price, setPrice] = useState(0);
   const [location, setLocation] = useState("");
   const [error, setError] = useState("");
+  const [walletReady, setWalletReady] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [connectingWallet, setConnectingWallet] = useState(false);
+  const connectBridgeKey = async () => {
+    if (!user) return;
+    setConnectingWallet(true); setError("");
+    try {
+      const wallet = await connectWallet();
+      if (!wallet.address || !wallet.signer || wallet.chainId !== 91562037) throw new Error("Connect BridgeKey to MST Testnet to continue.");
+      if (wallet.address.toLowerCase() !== user.walletAddress.toLowerCase()) throw new Error(`BridgeKey account ${wallet.address} does not match your signed-in account ${user.walletAddress}. Sign in with the connected account.`);
+      setWalletAddress(wallet.address);
+      setWalletReady(true);
+    } catch (e) { setError(e instanceof Error ? e.message : "Could not connect BridgeKey to MST Testnet."); }
+    finally { setConnectingWallet(false); }
+  };
   const submitListing = async (event: FormEvent) => {
     event.preventDefault(); setError("");
     if (!identifier.trim()) { setError("Enter the device serial number or IMEI."); return; }
@@ -61,10 +76,15 @@ function SellPage({ user, busy, message, onConnect, onPublish }: WorkspaceProps)
     <section className="mx-auto max-w-3xl pb-24">
       <div className="meta">RELORE · SELLER WORKSPACE</div>
       <h1 className="editorial mt-4 text-5xl text-foreground sm:text-7xl">Sell an object.</h1>
-      <p className="meta mt-5 max-w-xl leading-relaxed">Give its next owner the details and history they need to decide with confidence.</p>
+      <p className="meta mt-5 max-w-xl leading-relaxed">Connect BridgeKey to MST Testnet before creating an on-chain passport. Your wallet will ask you to approve each transaction.</p>
       {!user ? <ConnectCard onConnect={onConnect} /> : (
         <form onSubmit={submitListing} className="mt-12 space-y-7 border-t border-border pt-8">
           <h2 className="meta text-foreground">Product details · Seller access is automatic</h2>
+          <div className="border border-border bg-surface/50 p-5">
+            <p className="meta text-foreground">Step 1 · Connect BridgeKey to MST Testnet</p>
+            <p className="meta mt-2 normal-case tracking-normal">The product passport is created only after the correct wallet is connected and confirms the MST transactions.</p>
+            <button type="button" disabled={connectingWallet || busy} onClick={() => void connectBridgeKey()} className="meta mt-4 border border-primary px-5 py-3 text-primary disabled:opacity-60">{connectingWallet ? "Connecting…" : walletReady ? `Connected · ${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)} · MST Testnet` : "Connect BridgeKey"}</button>
+          </div>
           <Field label="Product type"><select value={category} onChange={(e) => setCategory(e.target.value as ProductCategory)}><option value="LAPTOP">Laptop</option><option value="SMARTPHONE">Phone</option><option value="CAMERA">Camera</option><option value="FURNITURE">Furniture</option><option value="OTHER">Other object</option></select></Field>
           <div className="grid gap-6 sm:grid-cols-2"><Field label="Brand"><input required value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={80} /></Field><Field label="Release year"><input type="number" min="1970" max={new Date().getFullYear() + 1} value={releaseYear} onChange={(e) => setReleaseYear(Number(e.target.value))} required /></Field></div>
           <Field label="Model"><input required value={model} onChange={(e) => setModel(e.target.value)} maxLength={140} /></Field>
@@ -73,9 +93,9 @@ function SellPage({ user, busy, message, onConnect, onPublish }: WorkspaceProps)
           <h2 className="meta border-t border-border pt-8 text-foreground">Listing</h2>
           <Field label="Listing title"><input required value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} placeholder={brand && model ? brand + " " + model : "Product name"} /></Field>
           <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={4000} /></Field>
-          <div className="grid gap-6 sm:grid-cols-2"><Field label="Price · tMSTC"><input required type="number" min="0.000001" max="1000000" step="0.000001" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} /><span className="meta mt-2 block normal-case tracking-normal">Buyers pay this amount directly to your connected wallet. Wallet gas is separate.</span></Field><Field label="Location"><input required value={location} onChange={(e) => setLocation(e.target.value)} maxLength={120} /></Field></div>
+          <div className="grid gap-6 sm:grid-cols-2"><Field label="Price"><input required type="number" min="0.000001" max="1000000" step="0.000001" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} /></Field><Field label="Location"><input required value={location} onChange={(e) => setLocation(e.target.value)} maxLength={120} /></Field></div>
           {error && <p role="alert" className="meta text-unverified">{error}</p>}
-          <button disabled={busy} className="meta w-full bg-primary py-5 text-primary-foreground disabled:opacity-60">{busy ? "Submitting for review…" : "Create product passport & submit listing"}</button>
+          <button disabled={busy || !walletReady} className="meta w-full bg-primary py-5 text-primary-foreground disabled:opacity-60">{busy ? "Submitting for review…" : !walletReady ? "Connect BridgeKey to continue" : "Create product passport & submit listing"}</button>
         </form>
       )}
       {message && <p role="status" className="meta mt-6">{message}</p>}
@@ -131,7 +151,7 @@ function AccountPage({ user, onConnect, onSaveName, onSignOut, busy, message }: 
 }
 
 function ConnectCard({ onConnect }: { onConnect: () => void }) {
-  return <div className="mt-12 border-t border-border pt-8"><p className="meta max-w-lg leading-relaxed">Connect your MST wallet to manage your seller account. Signing in uses a message signature and does not send a blockchain transaction.</p><button type="button" onClick={onConnect} className="meta mt-6 bg-primary px-6 py-4 text-primary-foreground">Connect wallet</button></div>;
+  return <div className="mt-12 border-t border-border pt-8"><p className="meta max-w-lg leading-relaxed">Connect BridgeKey on MST Testnet to sign in. You’ll approve the passport transactions in your wallet before the product is created.</p><button type="button" onClick={onConnect} className="meta mt-6 bg-primary px-6 py-4 text-primary-foreground">Connect BridgeKey · MST Testnet</button></div>;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {

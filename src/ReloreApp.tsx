@@ -106,6 +106,13 @@ export function ReloreApp() {
     if (!user) throw new Error("Connect and sign in with your MST wallet first.");
     setBusy(true); setActionMessage("");
     try {
+      const wallet = await connectWallet();
+      if (!wallet.address || !wallet.signer || wallet.chainId !== 91562037) {
+        throw new Error("Connect BridgeKey to MST Testnet before creating an on-chain passport.");
+      }
+      if (wallet.address.toLowerCase() !== user.walletAddress.toLowerCase()) {
+        throw new Error(`The connected BridgeKey account (${wallet.address}) does not match your signed-in account (${user.walletAddress}). Switch accounts and sign in again before creating the passport.`);
+      }
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(draft.identifier.trim().toUpperCase()));
       const identifierHash = "0x" + Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
       const passportId = `PP-${crypto.randomUUID().split("-")[0].toUpperCase()}`;
