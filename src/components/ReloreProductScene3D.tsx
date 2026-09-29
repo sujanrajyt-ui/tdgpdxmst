@@ -1,94 +1,31 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
+import { Environment, Float, Lightformer, PresentationControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
 
-function makeScreenTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 900;
-    canvas.height = 560;
-    const context = canvas.getContext('2d');
-    if (!context) return new THREE.CanvasTexture(canvas);
+const MODEL_PATH = '/models/macbook-16-transformed.glb';
 
-    const gradient = context.createLinearGradient(0, 0, 900, 560);
-    gradient.addColorStop(0, '#15251c');
-    gradient.addColorStop(0.56, '#355741');
-    gradient.addColorStop(1, '#8ca292');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, 900, 560);
-    context.fillStyle = '#ffffff';
-    context.font = '600 64px system-ui, sans-serif';
-    context.fillText('Relore', 70, 150);
-    context.fillStyle = '#e4eee5';
-    context.font = '32px system-ui, sans-serif';
-    context.fillText('A product with a history.', 74, 208);
-    context.fillStyle = '#dce9df';
-    context.beginPath();
-    context.roundRect(72, 290, 260, 88, 16);
-    context.fill();
-    context.fillStyle = '#1c382b';
-    context.font = '600 27px system-ui, sans-serif';
-    context.fillText('VIEW PASSPORT', 100, 345);
+function MacbookModel() {
+    const { scene } = useGLTF(MODEL_PATH, '/draco/gltf/');
+    const model = useMemo(() => {
+        const copy = scene.clone(true);
+        copy.traverse(object => {
+            if (!(object instanceof THREE.Mesh)) return;
+            object.castShadow = true;
+            object.receiveShadow = true;
+            if (Array.isArray(object.material)) {
+                object.material = object.material.map(material => material.clone());
+            } else {
+                object.material = object.material.clone();
+            }
+        });
+        return copy;
+    }, [scene]);
 
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
-}
-
-function LaptopModel() {
-    const model = useRef<THREE.Group>(null);
-    const screenTexture = useMemo(makeScreenTexture, []);
-    const { pointer } = useThree();
-    const keys = useMemo(() => Array.from({ length: 60 }, (_, index) => ({
-        x: (index % 10 - 4.5) * 0.285,
-        z: (Math.floor(index / 10) - 1.5) * 0.22 - 0.12,
-    })), []);
-
-    useFrame(({ clock }, delta) => {
-        if (!model.current) return;
-        const targetY = -0.38 + pointer.x * 0.24;
-        const targetX = 0.14 - pointer.y * 0.13;
-        model.current.rotation.y = THREE.MathUtils.damp(model.current.rotation.y, targetY, 3, delta);
-        model.current.rotation.x = THREE.MathUtils.damp(model.current.rotation.x, targetX, 3, delta);
-        model.current.position.y = 0.05 + Math.sin(clock.elapsedTime * 0.8) * 0.055;
-    });
-
-    return (
-        <group ref={model} rotation={[0.14, -0.38, 0]}>
-            {/* One original low-poly laptop model, assembled from Three.js shapes. */}
-            <mesh position={[0, 0, 0]} castShadow receiveShadow>
-                <boxGeometry args={[3.7, 0.16, 2.45]} />
-                <meshStandardMaterial color="#b9c2ba" metalness={0.72} roughness={0.28} />
-            </mesh>
-            <mesh position={[0, 0.087, 0.04]}>
-                <boxGeometry args={[3.48, 0.025, 2.18]} />
-                <meshStandardMaterial color="#202822" metalness={0.18} roughness={0.6} />
-            </mesh>
-            {keys.map((key, index) => (
-                <mesh key={index} position={[key.x, 0.11, key.z]}>
-                    <boxGeometry args={[0.21, 0.025, 0.15]} />
-                    <meshStandardMaterial color="#69766c" metalness={0.16} roughness={0.45} />
-                </mesh>
-            ))}
-            <mesh position={[0, 0.108, 0.76]}>
-                <boxGeometry args={[0.9, 0.018, 0.52]} />
-                <meshStandardMaterial color="#9ba69c" metalness={0.52} roughness={0.35} />
-            </mesh>
-            <group position={[0, 0.08, -1.15]}>
-                <mesh position={[0, 1.26, 0]} castShadow>
-                    <boxGeometry args={[3.72, 2.55, 0.12]} />
-                    <meshStandardMaterial color="#19221c" metalness={0.55} roughness={0.26} />
-                </mesh>
-                <mesh position={[0, 1.26, 0.066]}>
-                    <planeGeometry args={[3.5, 2.33]} />
-                    <meshBasicMaterial map={screenTexture} toneMapped={false} />
-                </mesh>
-                <mesh position={[0, 2.49, 0.066]}>
-                    <sphereGeometry args={[0.035, 12, 8]} />
-                    <meshStandardMaterial color="#718078" />
-                </mesh>
-            </group>
-        </group>
-    );
+    return <primitive object={model} position={[0, -0.3, 0]} rotation={[Math.PI / 2, Math.PI, 0]} scale={0.06} dispose={null} />;
 }
 
 function CssLaptopFallback() {
@@ -122,20 +59,121 @@ function CssLaptopFallback() {
     );
 }
 
+function SvgLaptopFallback() {
+    const mount = useRef<HTMLDivElement>(null);
+    const modelRef = useRef<THREE.Group | null>(null);
+    const renderRef = useRef<() => void>(() => undefined);
+    const [loaded, setLoaded] = useState(false);
+    const [failed, setFailed] = useState(false);
+
+    React.useEffect(() => {
+        const container = mount.current;
+        if (!container) return;
+
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(47, 1, 0.1, 100);
+        camera.position.set(0, 1.8, 5.2);
+        camera.lookAt(0, 0, 0);
+        scene.add(new THREE.AmbientLight('#ffffff', 2.1));
+        const keyLight = new THREE.DirectionalLight('#ffffff', 2.8);
+        keyLight.position.set(-3, 6, 5);
+        scene.add(keyLight);
+
+        const renderer = new SVGRenderer();
+        renderer.setQuality('high');
+        renderer.setClearColor(new THREE.Color('#ffffff'), 0);
+        const resize = () => {
+            const width = Math.max(1, container.clientWidth);
+            const height = Math.max(1, container.clientHeight);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            if (modelRef.current) renderer.render(scene, camera);
+        };
+        renderRef.current = () => renderer.render(scene, camera);
+        container.appendChild(renderer.domElement);
+        const observer = new ResizeObserver(resize);
+        observer.observe(container);
+        resize();
+
+        const draco = new DRACOLoader();
+        draco.setDecoderPath('/draco/gltf/');
+        const loader = new GLTFLoader();
+        loader.setDRACOLoader(draco);
+        loader.load(MODEL_PATH, ({ scene: source }) => {
+            const laptop = source.clone(true);
+            laptop.rotation.x = Math.PI / 2;
+            laptop.rotation.y = Math.PI;
+            laptop.position.y = -0.3;
+            laptop.scale.setScalar(0.06);
+            laptop.traverse(object => {
+                if (!(object instanceof THREE.Mesh)) return;
+                object.material = Array.isArray(object.material)
+                    ? object.material.map(material => material.clone())
+                    : object.material.clone();
+            });
+
+            const model = new THREE.Group();
+            model.rotation.set(0.1, -0.27, 0);
+            model.add(laptop);
+            modelRef.current = model;
+            scene.add(model);
+            resize();
+            setLoaded(true);
+        }, undefined, () => setFailed(true));
+
+        return () => {
+            observer.disconnect();
+            draco.dispose();
+            renderRef.current = () => undefined;
+            renderer.domElement.remove();
+        };
+    }, []);
+
+    const rotateModel = (event: React.PointerEvent<HTMLDivElement>) => {
+        if (!modelRef.current) return;
+        const bounds = event.currentTarget.getBoundingClientRect();
+        modelRef.current.rotation.x = 0.1 + ((event.clientY - bounds.top) / bounds.height - 0.5) * -0.34;
+        modelRef.current.rotation.y = -0.27 + ((event.clientX - bounds.left) / bounds.width - 0.5) * 0.8;
+        renderRef.current();
+    };
+
+    return (
+        <div className="shop-home-svg-fallback" onPointerMove={rotateModel} onPointerLeave={() => {
+            if (modelRef.current) modelRef.current.rotation.set(0.1, -0.27, 0);
+            renderRef.current();
+        }}>
+            <div ref={mount} className="shop-home-svg-mount" />
+            {!loaded && !failed && <div className="shop-home-stage-loading">Loading the MacBook 3D model…</div>}
+            {failed && <CssLaptopFallback />}
+        </div>
+    );
+}
+
 export default function ReloreProductScene3D() {
     return (
         <Canvas
             className="shop-home-product-canvas"
-            camera={{ position: [4.7, 3.6, 6.2], fov: 34 }}
+            camera={{ position: [0, 1.9, 5], fov: 50, near: 0.1, far: 100 }}
             dpr={[1, 1.5]}
             shadows
-            fallback={<CssLaptopFallback />}
+            fallback={<SvgLaptopFallback />}
             gl={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
         >
-            <ambientLight intensity={1.5} />
-            <directionalLight position={[4, 7, 5]} intensity={2.1} castShadow shadow-mapSize={[1024, 1024]} />
-            <pointLight position={[-4, 2, -3]} intensity={1.1} color="#b7cfb9" />
-            <LaptopModel />
+            <ambientLight intensity={0.7} />
+            <directionalLight position={[-2, 10, 5]} intensity={2.2} castShadow shadow-mapSize={[1024, 1024]} />
+            <spotLight position={[0, 8, 5]} angle={0.28} penumbra={0.7} intensity={2.4} />
+            <Environment resolution={128}>
+                <Lightformer form="rect" intensity={4} position={[-5, 3, -2]} scale={6} />
+                <Lightformer form="rect" intensity={3} position={[5, 1, 2]} scale={5} />
+            </Environment>
+            <PresentationControls global snap={false} speed={1} zoom={1} rotation={[0.04, -0.2, 0]} polar={[-0.18, 0.18]} azimuth={[-0.75, 0.75]} config={{ mass: 1, tension: 170, friction: 26 }}>
+                <Float speed={1.2} rotationIntensity={0.07} floatIntensity={0.16}>
+                    <MacbookModel />
+                </Float>
+            </PresentationControls>
         </Canvas>
     );
 }
+
+useGLTF.preload(MODEL_PATH, '/draco/gltf/');

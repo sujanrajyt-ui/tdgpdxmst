@@ -307,6 +307,10 @@ button.bg-gradient-to-r.from-cyan-500.to-blue-500 { background-image:linear-grad
 .shop-home-stage-loading { position:absolute;inset:0;z-index:1;display:grid;place-items:center;color:#526174;font-size:12px; }
 .shop-home-css-fallback { position:absolute;inset:0;z-index:1;display:grid;place-items:center;overflow:hidden;perspective:850px;cursor:grab; }
 .shop-home-css-fallback:active { cursor:grabbing; }
+.shop-home-svg-fallback { position:absolute;inset:0;z-index:1;overflow:hidden;cursor:grab; }
+.shop-home-svg-fallback:active { cursor:grabbing; }
+.shop-home-svg-mount { position:absolute;inset:0; }
+.shop-home-svg-mount svg { width:100%;height:100%;overflow:visible; }
 .shop-home-css-laptop { position:relative;width:min(78%,330px);height:226px;transform-style:preserve-3d;transition:transform 120ms ease-out;filter:drop-shadow(0 27px 18px #15231928); }
 .shop-home-css-screen-frame { position:absolute;top:3px;left:11%;width:78%;height:162px;padding:8px;border:1px solid #7a827c;border-radius:12px;background:linear-gradient(135deg,#414942,#141a16 40%,#303a32);box-shadow:inset 0 0 0 1px #d5ddd522;transform:translateZ(22px); }
 .shop-home-css-screen { height:100%;display:flex;flex-direction:column;justify-content:center;padding:18px 22px;border:1px solid #a9b8aa55;border-radius:5px;background:linear-gradient(135deg,#14241a,#3b5e45 62%,#8a9a8d);color:#fff; }
@@ -323,6 +327,7 @@ button.bg-gradient-to-r.from-cyan-500.to-blue-500 { background-image:linear-grad
 .shop-home-showcase-links { display:flex;align-items:center;gap:14px; }
 .shop-home-showcase-links button { display:flex;align-items:center;gap:5px;color:#315c42;font-size:10px;font-weight:700;white-space:nowrap; }
 .shop-home-drag-tip { grid-column:1/-1;color:#778379;font-size:9px; }
+.shop-home-model-credit { grid-column:1/-1;color:#909991;font-size:8px; }
 .shop-home-verify { display:grid;grid-template-columns:minmax(190px,.8fr) minmax(280px,1.2fr);align-items:center;gap:5px 20px;margin-top:15px;padding:14px 18px;background:#f7f8f5;border:1px solid #d5d9d9;border-radius:7px; }
 .shop-home-verify-copy { display:grid;gap:4px; }
 .shop-home-verify strong,.shop-home-verify span { display:block; }

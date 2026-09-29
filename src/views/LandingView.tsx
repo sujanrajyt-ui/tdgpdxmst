@@ -48,6 +48,7 @@ export const LandingView: React.FC<Props> = ({ onNavigate }) => {
                             <button type="button" onClick={() => onNavigate('passport-detail', heroPassport.passportId)}>View passport <ArrowRight size={14} /></button>
                         </div>
                         <span className="shop-home-drag-tip">Drag over the model to rotate it</span>
+                        <span className="shop-home-model-credit">3D model by Jack Baeten · CC BY 4.0</span>
                     </div>
                 </div>}
             </section>
