@@ -2,6 +2,7 @@ import React, { Suspense, useState } from 'react';
 import { ArrowRight, Search, ShieldCheck, Tag } from 'lucide-react';
 import { AppStore } from '../core/store';
 import { ProductCardZayq } from '../components/ProductCardZayq';
+import { ScrollReveal } from '../components/ScrollReveal';
 
 const ReloreProductScene3D = React.lazy(() => import('../components/ReloreProductScene3D'));
 
@@ -47,27 +48,33 @@ export const LandingView: React.FC<Props> = ({ onNavigate }) => {
                             <button type="button" onClick={() => onNavigate('listing-detail', heroListing.id)}>View listing <ArrowRight size={14} /></button>
                             <button type="button" onClick={() => onNavigate('passport-detail', heroPassport.passportId)}>View passport <ArrowRight size={14} /></button>
                         </div>
-                        <span className="shop-home-drag-tip">Drag over the model to rotate it</span>
+                        <span className="shop-home-drag-tip">Scroll to turn the model · drag to inspect</span>
                         <span className="shop-home-model-credit">3D model by Jack Baeten · CC BY 4.0</span>
                     </div>
                 </div>}
             </section>
 
-            <form className="shop-home-verify" onSubmit={handleVerify}>
-                <div className="shop-home-verify-copy"><strong>Checking a product?</strong><span>Look up the passport ID to see its saved record.</span></div>
-                <div className="shop-home-verify-field"><Search size={17} /><input value={passportId} onChange={event => setPassportId(event.target.value)} placeholder="Enter passport ID, e.g. PP-82941" aria-label="Product passport ID" /><button type="submit">Look up</button></div>
-                <small>Try a sample: <button type="button" onClick={() => onNavigate('passport-detail', 'PP-82941')}>PP-82941</button> · <button type="button" onClick={() => onNavigate('passport-detail', 'PP-91823')}>PP-91823</button></small>
-            </form>
+            <ScrollReveal>
+                <form className="shop-home-verify" onSubmit={handleVerify}>
+                    <div className="shop-home-verify-copy"><strong>Checking a product?</strong><span>Look up the passport ID to see its saved record.</span></div>
+                    <div className="shop-home-verify-field"><Search size={17} /><input value={passportId} onChange={event => setPassportId(event.target.value)} placeholder="Enter passport ID, e.g. PP-82941" aria-label="Product passport ID" /><button type="submit">Look up</button></div>
+                    <small>Try a sample: <button type="button" onClick={() => onNavigate('passport-detail', 'PP-82941')}>PP-82941</button> · <button type="button" onClick={() => onNavigate('passport-detail', 'PP-91823')}>PP-91823</button></small>
+                </form>
+            </ScrollReveal>
 
-            <section className="shop-home-featured">
-                <div className="shop-home-section-title"><div><span>SHOPPING WITH MORE CONTEXT</span><h2>Featured electronics</h2></div><button onClick={() => onNavigate('marketplace')}>See all listings <ArrowRight size={15} /></button></div>
-                <div className="shop-product-grid">
-                    {featured.map(listing => <ProductCardZayq key={listing.id} listing={listing} passport={passports.get(listing.passportId)} onViewDetail={id => onNavigate('listing-detail', id)} onViewPassport={id => onNavigate('passport-detail', id)} />)}
-                </div>
-                <p className="shop-demo-note">Prototype marketplace: these sample listings are stored in this browser. Checkout and payment are not available.</p>
-            </section>
+            <ScrollReveal distance={36}>
+                <section className="shop-home-featured">
+                    <div className="shop-home-section-title"><div><span>SHOPPING WITH MORE CONTEXT</span><h2>Featured electronics</h2></div><button onClick={() => onNavigate('marketplace')}>See all listings <ArrowRight size={15} /></button></div>
+                    <div className="shop-product-grid">
+                        {featured.map((listing, index) => <ScrollReveal key={listing.id} delay={index * 0.1} distance={22}><ProductCardZayq listing={listing} passport={passports.get(listing.passportId)} onViewDetail={id => onNavigate('listing-detail', id)} onViewPassport={id => onNavigate('passport-detail', id)} /></ScrollReveal>)}
+                    </div>
+                    <p className="shop-demo-note">Prototype marketplace: these sample listings are stored in this browser. Checkout and payment are not available.</p>
+                </section>
+            </ScrollReveal>
 
-            <section className="shop-home-trust"><ShieldCheck size={21} /><div><strong>Review the product before you buy</strong><span>Each listing links to its passport record. Check the evidence and history, and remember that claims can vary in verification level.</span></div></section>
+            <ScrollReveal distance={24}>
+                <section className="shop-home-trust"><ShieldCheck size={21} /><div><strong>Review the product before you buy</strong><span>Each listing links to its passport record. Check the evidence and history, and remember that claims can vary in verification level.</span></div></section>
+            </ScrollReveal>
         </div>
     );
 };

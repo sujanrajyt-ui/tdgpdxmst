@@ -1,10 +1,11 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, Float, Lightformer, PresentationControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
+import { loadScrollTrigger } from '../core/gsap';
 
 const MODEL_PATH = '/models/macbook-16-transformed.glb';
 
@@ -26,6 +27,35 @@ function MacbookModel() {
     }, [scene]);
 
     return <primitive object={model} position={[0, -0.3, 0]} rotation={[Math.PI / 2, Math.PI, 0]} scale={0.06} dispose={null} />;
+}
+
+function ProductRig({ scrollProgress, children }: { scrollProgress: React.MutableRefObject<number>; children: React.ReactNode }) {
+    const rig = useRef<THREE.Group>(null);
+    const reducedMotion = useRef(false);
+
+    React.useEffect(() => {
+        reducedMotion.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }, []);
+
+    useFrame((state, delta) => {
+        if (!rig.current) return;
+        const scrollTurn = scrollProgress.current * 2.1;
+        const idleTurn = reducedMotion.current ? 0 : state.clock.elapsedTime * 0.12;
+        rig.current.rotation.y = THREE.MathUtils.damp(
+            rig.current.rotation.y,
+            -0.27 + scrollTurn + idleTurn + state.pointer.x * 0.14,
+            2.5,
+            delta,
+        );
+        rig.current.rotation.x = THREE.MathUtils.damp(
+            rig.current.rotation.x,
+            0.1 + state.pointer.y * 0.12 + scrollProgress.current * 0.16,
+            2.5,
+            delta,
+        );
+    });
+
+    return <group ref={rig}>{children}</group>;
 }
 
 function CssLaptopFallback() {
@@ -63,6 +93,9 @@ function SvgLaptopFallback() {
     const mount = useRef<HTMLDivElement>(null);
     const modelRef = useRef<THREE.Group | null>(null);
     const renderRef = useRef<() => void>(() => undefined);
+    const applyRotationRef = useRef<() => void>(() => undefined);
+    const scrollProgress = useRef(0);
+    const pointerTilt = useRef({ x: 0, y: 0 });
     const [loaded, setLoaded] = useState(false);
     const [failed, setFailed] = useState(false);
 
@@ -118,11 +151,42 @@ function SvgLaptopFallback() {
             model.add(laptop);
             modelRef.current = model;
             scene.add(model);
+            applyRotationRef.current();
             resize();
             setLoaded(true);
         }, undefined, () => setFailed(true));
 
+        const hero = document.querySelector('.shop-home-hero');
+        const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        let cancelled = false;
+        let killScrollTrigger: (() => void) | undefined;
+        if (hero && !reducedMotion) {
+            void loadScrollTrigger().then(({ ScrollTrigger }) => {
+                if (cancelled) return;
+                const trigger = ScrollTrigger.create({
+                    trigger: hero,
+                    start: 'top top',
+                    end: 'bottom top',
+                    scrub: 0.7,
+                    onUpdate: self => {
+                        scrollProgress.current = self.progress;
+                        applyRotationRef.current();
+                    },
+                });
+                killScrollTrigger = () => trigger.kill();
+            });
+        }
+
+        applyRotationRef.current = () => {
+            if (!modelRef.current) return;
+            modelRef.current.rotation.x = 0.1 + pointerTilt.current.x + scrollProgress.current * 0.16;
+            modelRef.current.rotation.y = -0.27 + pointerTilt.current.y + scrollProgress.current * 2.1;
+            renderRef.current();
+        };
+
         return () => {
+            cancelled = true;
+            killScrollTrigger?.();
             observer.disconnect();
             draco.dispose();
             renderRef.current = () => undefined;
@@ -133,15 +197,15 @@ function SvgLaptopFallback() {
     const rotateModel = (event: React.PointerEvent<HTMLDivElement>) => {
         if (!modelRef.current) return;
         const bounds = event.currentTarget.getBoundingClientRect();
-        modelRef.current.rotation.x = 0.1 + ((event.clientY - bounds.top) / bounds.height - 0.5) * -0.34;
-        modelRef.current.rotation.y = -0.27 + ((event.clientX - bounds.left) / bounds.width - 0.5) * 0.8;
-        renderRef.current();
+        pointerTilt.current.x = ((event.clientY - bounds.top) / bounds.height - 0.5) * -0.34;
+        pointerTilt.current.y = ((event.clientX - bounds.left) / bounds.width - 0.5) * 0.8;
+        applyRotationRef.current();
     };
 
     return (
         <div className="shop-home-svg-fallback" onPointerMove={rotateModel} onPointerLeave={() => {
-            if (modelRef.current) modelRef.current.rotation.set(0.1, -0.27, 0);
-            renderRef.current();
+            pointerTilt.current = { x: 0, y: 0 };
+            applyRotationRef.current();
         }}>
             <div ref={mount} className="shop-home-svg-mount" />
             {!loaded && !failed && <div className="shop-home-stage-loading">Loading the MacBook 3D model…</div>}
@@ -151,6 +215,33 @@ function SvgLaptopFallback() {
 }
 
 export default function ReloreProductScene3D() {
+    const scrollProgress = useRef(0);
+    const [reducedMotion, setReducedMotion] = useState(false);
+
+    React.useEffect(() => {
+        setReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    }, []);
+
+    React.useEffect(() => {
+        const hero = document.querySelector('.shop-home-hero');
+        if (!hero || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+        let cancelled = false;
+        let killScrollTrigger: (() => void) | undefined;
+        void loadScrollTrigger().then(({ ScrollTrigger }) => {
+            if (cancelled) return;
+            const trigger = ScrollTrigger.create({
+                trigger: hero,
+                start: 'top top',
+                end: 'bottom top',
+                scrub: 0.7,
+                onUpdate: self => { scrollProgress.current = self.progress; },
+            });
+            killScrollTrigger = () => trigger.kill();
+        });
+        return () => { cancelled = true; killScrollTrigger?.(); };
+    }, []);
+
     return (
         <Canvas
             className="shop-home-product-canvas"
@@ -168,9 +259,11 @@ export default function ReloreProductScene3D() {
                 <Lightformer form="rect" intensity={3} position={[5, 1, 2]} scale={5} />
             </Environment>
             <PresentationControls global snap={false} speed={1} zoom={1} rotation={[0.04, -0.2, 0]} polar={[-0.18, 0.18]} azimuth={[-0.75, 0.75]} config={{ mass: 1, tension: 170, friction: 26 }}>
-                <Float speed={1.2} rotationIntensity={0.07} floatIntensity={0.16}>
-                    <MacbookModel />
-                </Float>
+                <ProductRig scrollProgress={scrollProgress}>
+                    <Float speed={reducedMotion ? 0 : 1.2} rotationIntensity={reducedMotion ? 0 : 0.07} floatIntensity={reducedMotion ? 0 : 0.16}>
+                        <MacbookModel />
+                    </Float>
+                </ProductRig>
             </PresentationControls>
         </Canvas>
     );
