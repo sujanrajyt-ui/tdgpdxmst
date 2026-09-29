@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { SVGRenderer } from 'three/addons/renderers/SVGRenderer.js';
-import { loadScrollTrigger } from '../core/gsap';
 
 const MODEL_PATH = '/models/macbook-16-transformed.glb';
 
@@ -26,7 +25,7 @@ function MacbookModel() {
         return copy;
     }, [scene]);
 
-    return <primitive object={model} position={[0, -0.1, 0]} rotation={[Math.PI / 2, Math.PI, 0]} scale={0.09} dispose={null} />;
+    return <primitive object={model} position={[0, -0.1, 0]} rotation={[Math.PI / 2, 0, 0]} scale={0.09} dispose={null} />;
 }
 
 function ProductRig({ scrollProgress, children }: { scrollProgress: React.MutableRefObject<number>; children: React.ReactNode }) {
@@ -39,17 +38,17 @@ function ProductRig({ scrollProgress, children }: { scrollProgress: React.Mutabl
 
     useFrame((state, delta) => {
         if (!rig.current) return;
-        const scrollTurn = scrollProgress.current * 2.1;
-        const idleTurn = reducedMotion.current ? 0 : state.clock.elapsedTime * 0.12;
+        const scrollTurn = scrollProgress.current * Math.PI * 2;
+        const idleTurn = reducedMotion.current ? 0 : state.clock.elapsedTime * 0.18;
         rig.current.rotation.y = THREE.MathUtils.damp(
             rig.current.rotation.y,
-            -0.27 + scrollTurn + idleTurn + state.pointer.x * 0.14,
+            scrollTurn + idleTurn + state.pointer.x * 0.14,
             2.5,
             delta,
         );
         rig.current.rotation.x = THREE.MathUtils.damp(
             rig.current.rotation.x,
-            0.1 + state.pointer.y * 0.12 + scrollProgress.current * 0.16,
+            0.05 + state.pointer.y * 0.12 + scrollProgress.current * 0.16,
             2.5,
             delta,
         );
@@ -95,6 +94,7 @@ function SvgLaptopFallback() {
     const renderRef = useRef<() => void>(() => undefined);
     const applyRotationRef = useRef<() => void>(() => undefined);
     const scrollProgress = useRef(0);
+    const idleRotation = useRef(0);
     const pointerTilt = useRef({ x: 0, y: 0 });
     const [loaded, setLoaded] = useState(false);
     const [failed, setFailed] = useState(false);
@@ -136,7 +136,7 @@ function SvgLaptopFallback() {
         loader.load(MODEL_PATH, ({ scene: source }) => {
             const laptop = source.clone(true);
             laptop.rotation.x = Math.PI / 2;
-            laptop.rotation.y = Math.PI;
+            laptop.rotation.y = 0;
             laptop.position.y = -0.1;
             laptop.scale.setScalar(0.09);
             laptop.traverse(object => {
@@ -147,7 +147,7 @@ function SvgLaptopFallback() {
             });
 
             const model = new THREE.Group();
-            model.rotation.set(0.1, -0.27, 0);
+            model.rotation.set(0.05, 0, 0);
             model.add(laptop);
             modelRef.current = model;
             scene.add(model);
@@ -158,35 +158,56 @@ function SvgLaptopFallback() {
 
         const hero = document.querySelector('.shop-home-hero');
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        let cancelled = false;
-        let killScrollTrigger: (() => void) | undefined;
-        if (hero && !reducedMotion) {
-            void loadScrollTrigger().then(({ ScrollTrigger }) => {
-                if (cancelled) return;
-                const trigger = ScrollTrigger.create({
-                    trigger: hero,
-                    start: 'top top',
-                    end: 'bottom top',
-                    scrub: 0.7,
-                    onUpdate: self => {
-                        scrollProgress.current = self.progress;
-                        applyRotationRef.current();
-                    },
-                });
-                killScrollTrigger = () => trigger.kill();
-            });
-        }
+        let inView = false;
+        let animationFrame = 0;
+        let previousFrame = 0;
+        const maxScroll = Math.max(1, (hero instanceof HTMLElement ? hero.offsetHeight : window.innerHeight) * 0.85);
+
+        const updateScrollRotation = () => {
+            scrollProgress.current = THREE.MathUtils.clamp(window.scrollY / maxScroll, 0, 1);
+            applyRotationRef.current();
+        };
+        const animate = (time: number) => {
+            if (!inView || document.hidden || reducedMotion) { animationFrame = 0; return; }
+            const delta = previousFrame ? Math.min((time - previousFrame) / 1000, 0.05) : 0;
+            previousFrame = time;
+            idleRotation.current += delta * 0.18;
+            applyRotationRef.current();
+            animationFrame = requestAnimationFrame(animate);
+        };
+        const startAnimation = () => {
+            if (inView && !document.hidden && !reducedMotion && !animationFrame) {
+                previousFrame = 0;
+                animationFrame = requestAnimationFrame(animate);
+            }
+        };
+        const stopAnimation = () => {
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+            animationFrame = 0;
+            previousFrame = 0;
+        };
+        const viewportObserver = new IntersectionObserver(([entry]) => {
+            inView = entry.isIntersecting;
+            if (inView) startAnimation(); else stopAnimation();
+        });
+        const onVisibilityChange = () => document.hidden ? stopAnimation() : startAnimation();
+        viewportObserver.observe(container);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        window.addEventListener('scroll', updateScrollRotation, { passive: true });
+        updateScrollRotation();
 
         applyRotationRef.current = () => {
             if (!modelRef.current) return;
-            modelRef.current.rotation.x = 0.1 + pointerTilt.current.x + scrollProgress.current * 0.16;
-            modelRef.current.rotation.y = -0.27 + pointerTilt.current.y + scrollProgress.current * 2.1;
+            modelRef.current.rotation.x = 0.05 + pointerTilt.current.x + scrollProgress.current * 0.2;
+            modelRef.current.rotation.y = pointerTilt.current.y + scrollProgress.current * Math.PI * 2 + idleRotation.current;
             renderRef.current();
         };
 
         return () => {
-            cancelled = true;
-            killScrollTrigger?.();
+            stopAnimation();
+            viewportObserver.disconnect();
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            window.removeEventListener('scroll', updateScrollRotation);
             observer.disconnect();
             draco.dispose();
             renderRef.current = () => undefined;
@@ -224,22 +245,14 @@ export default function ReloreProductScene3D() {
 
     React.useEffect(() => {
         const hero = document.querySelector('.shop-home-hero');
-        if (!hero || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-        let cancelled = false;
-        let killScrollTrigger: (() => void) | undefined;
-        void loadScrollTrigger().then(({ ScrollTrigger }) => {
-            if (cancelled) return;
-            const trigger = ScrollTrigger.create({
-                trigger: hero,
-                start: 'top top',
-                end: 'bottom top',
-                scrub: 0.7,
-                onUpdate: self => { scrollProgress.current = self.progress; },
-            });
-            killScrollTrigger = () => trigger.kill();
-        });
-        return () => { cancelled = true; killScrollTrigger?.(); };
+        if (!hero) return;
+        const maxScroll = Math.max(1, (hero instanceof HTMLElement ? hero.offsetHeight : window.innerHeight) * 0.85);
+        const updateScrollRotation = () => {
+            scrollProgress.current = THREE.MathUtils.clamp(window.scrollY / maxScroll, 0, 1);
+        };
+        window.addEventListener('scroll', updateScrollRotation, { passive: true });
+        updateScrollRotation();
+        return () => window.removeEventListener('scroll', updateScrollRotation);
     }, []);
 
     return (
