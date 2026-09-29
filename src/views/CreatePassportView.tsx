@@ -3,6 +3,7 @@ import { ArrowLeft, Image, Laptop, ShieldCheck, Smartphone } from 'lucide-react'
 import { User, ProductCategory } from '../types';
 import { AppStore } from '../core/store';
 import { getWalletState } from '../core/mst/wallet';
+import { isValidImei } from '../core/verifiers/verificationEngine';
 
 interface Props {
     currentUser: User;
@@ -44,8 +45,8 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
             setFormError('Enter a serial number with at least 5 characters.');
             return;
         }
-        if (category === 'SMARTPHONE' && !/^\d{15}$/.test(imei.trim())) {
-            setFormError('Enter the phone’s 15-digit IMEI.');
+        if (category === 'SMARTPHONE' && !isValidImei(imei.trim())) {
+            setFormError('Enter a 15-digit IMEI with a valid check digit.');
             return;
         }
 
@@ -126,6 +127,7 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
                             <div>
                                 <label className={labelClass} htmlFor="product-imei">IMEI <span className="font-normal text-slate-500">(15 digits)</span></label>
                                 <input id="product-imei" required type="text" inputMode="numeric" autoComplete="off" maxLength={15} value={imei} onChange={event => setImei(event.target.value.replace(/\D/g, '').slice(0, 15))} placeholder="15-digit IMEI" className={`${inputClass} font-mono`} />
+                                <p className="mt-1 text-xs leading-5 text-slate-500">Checks the IMEI check digit. It does not check carrier or lost-device databases.</p>
                             </div>
                         </div>
                     ) : (

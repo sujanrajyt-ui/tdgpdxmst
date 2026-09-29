@@ -273,7 +273,7 @@ const INITIAL_PASSPORTS: ProductPassport[] = [
         ],
         identifier: {
             category: 'SMARTPHONE',
-            imei: '358921098492019',
+            imei: '358921098492010',
             serialNumber: 'DX9C10284912',
             model: 'iPhone 15 Pro',
             brand: 'Apple',
@@ -321,7 +321,7 @@ const INITIAL_PASSPORTS: ProductPassport[] = [
                 passportId: 'PP-91823',
                 eventType: 'PURCHASED',
                 title: 'Original Identity Registration',
-                description: 'iPhone 15 Pro registered with IMEI 358921098492019.',
+                description: 'iPhone 15 Pro registered with a sample IMEI.',
                 actorName: 'Sneha Sharma',
                 actorDid: 'did:mst:saral:88201938',
                 timestamp: '2024-11-10T08:20:00Z',
@@ -558,6 +558,9 @@ export class AppStore {
         };
 
         const idVerif = VerificationEngine.verifyIdentifier(identifierObj);
+        if (idVerif.status !== 'VERIFIED') {
+            throw new Error(idVerif.notes);
+        }
         const riskAnalysis = VerificationEngine.evaluateRisk(
             identifierObj,
             this.passports.map(p => ({ identifierHash: p.identifier.hashedIdentifier, passportId: p.passportId, currentOwnerId: p.currentOwnerId })),

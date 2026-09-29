@@ -15,9 +15,36 @@ export interface RiskAnalysisResult {
     signals: string[];
 }
 
+/** Validates the 15-digit IMEI format and its Luhn check digit. */
+export function isValidImei(value: string): boolean {
+    if (!/^\d{15}$/.test(value)) return false;
+
+    const sum = value.split('').reverse().reduce((total, digit, index) => {
+        let number = Number(digit);
+        if (index % 2 === 1) {
+            number *= 2;
+            if (number > 9) number -= 9;
+        }
+        return total + number;
+    }, 0);
+
+    return sum % 10 === 0;
+}
+
 export class VerificationEngine {
     public static verifyIdentifier(identifier: ProductIdentifier): VerificationResult {
         const rawId = identifier.serialNumber || identifier.imei || identifier.serviceTag || '';
+
+        if (identifier.category === 'SMARTPHONE' && !isValidImei(identifier.imei || '')) {
+            return {
+                claim: 'IDENTITY_VERIFIED',
+                status: 'FAILED',
+                verifiedBy: 'System IMEI Checksum Verifier',
+                evidenceHash: '0x0000000000000000',
+                timestamp: new Date().toISOString(),
+                notes: 'IMEI must contain 15 digits and pass the Luhn check-digit validation.'
+            };
+        }
 
         if (!rawId || rawId.trim().length < 5) {
             return {
