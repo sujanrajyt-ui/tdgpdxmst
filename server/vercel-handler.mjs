@@ -2,7 +2,14 @@ import { createHash, randomBytes } from 'node:crypto';
 import { getAddress, verifyMessage } from 'ethers';
 import { neon } from '@neondatabase/serverless';
 
-const sql = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
+// Marketplace integrations expose slightly different variable names. Prefer
+// DATABASE_URL, while accepting common Postgres/Neon aliases as well.
+const databaseUrl = process.env.DATABASE_URL
+  || process.env.POSTGRES_URL
+  || process.env.POSTGRES_PRISMA_URL
+  || process.env.POSTGRES_URL_NON_POOLING
+  || process.env.NEON_DATABASE_URL;
+const sql = databaseUrl ? neon(databaseUrl) : null;
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const now = () => new Date().toISOString();
 const cookieName = 'passport_session';
@@ -47,7 +54,7 @@ const schema = [
 ];
 
 async function ready() {
-  if (!sql) throw Object.assign(new Error('Vercel database is not connected. Add a Postgres integration to this Vercel project.'), { status: 503 });
+  if (!sql) throw Object.assign(new Error('No Postgres connection string is available to this deployment. Check the database integration’s environment variable name and Production/Preview scope, then redeploy.'), { status: 503 });
   if (!schemaReady) schemaReady = (async () => {
     for (const statement of schema) await sql.query(statement, []);
   })();
