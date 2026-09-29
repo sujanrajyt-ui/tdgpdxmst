@@ -1,4 +1,6 @@
-import { ethers } from "hardhat";
+import hardhat from "hardhat";
+
+const { ethers } = hardhat;
 
 async function main() {
     console.log("🚀 Deploying Product Passport contracts to MST network...\n");
@@ -43,12 +45,12 @@ async function main() {
     console.log("✅ LifecycleRegistry deployed:", lifecycleAddr);
 
     console.log("\n🎉 All contracts deployed successfully!\n");
-    console.log("=== CONTRACT ADDRESSES (copy to src/core/mst/contracts.ts) ===");
-    console.log(`ProductPassportRegistry: '${passportAddr}',`);
-    console.log(`OwnershipRegistry: '${ownershipAddr}',`);
-    console.log(`AttestationRegistry: '${attestationAddr}',`);
-    console.log(`ServiceRegistry: '${serviceAddr}',`);
-    console.log(`LifecycleRegistry: '${lifecycleAddr}',`);
+    console.log("=== Add to .env.local (Vite contract addresses) ===");
+    console.log(`VITE_MST_PRODUCT_PASSPORT_REGISTRY=${passportAddr}`);
+    console.log(`VITE_MST_OWNERSHIP_REGISTRY=${ownershipAddr}`);
+    console.log(`VITE_MST_ATTESTATION_REGISTRY=${attestationAddr}`);
+    console.log(`VITE_MST_SERVICE_REGISTRY=${serviceAddr}`);
+    console.log(`VITE_MST_LIFECYCLE_REGISTRY=${lifecycleAddr}`);
 }
 
 main()
