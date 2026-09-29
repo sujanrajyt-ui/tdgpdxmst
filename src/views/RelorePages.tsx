@@ -23,21 +23,21 @@ export function ReloreProductPage({ product, related }: { product: Product; rela
           <img src={product.image} alt={product.name} width={1024} height={1280} className="w-full object-cover" style={{ transform: "translateY(-" + (offset * 0.25) + "px) scale(1.04)" }} />
         </div>
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <div className="meta">{product.objectId}</div>
+          <div className="meta">{product.objectId}{product.isPreview ? " · PREVIEW ONLY" : ""}</div>
           <h1 className="editorial mt-3 text-5xl text-foreground sm:text-6xl">{product.name}</h1>
           <div className="mt-4 flex flex-wrap items-center gap-3"><PassportBadge status={product.passport} /><StateBadge state={product.state} /></div>
           <Spec label="Condition" value={product.condition} />
           <Spec label="Price" value={formatPrice(product.price)} />
           <Spec label="Seller" value={product.seller + " · seller since " + product.sellerSince} />
           <Spec label="Delivery / Pickup" value={<span className="text-sm font-normal leading-relaxed text-muted-foreground">{product.delivery}<br />{product.pickup}</span>} />
-          <button type="button" disabled={product.state !== "Live"} onClick={() => setCheckoutNote("Checkout and payment are not enabled yet.")} className="meta mt-8 w-full bg-primary py-5 text-primary-foreground cine transition-all duration-500 hover:brightness-110 disabled:opacity-50">
-            {product.state !== "Live" ? "Unavailable · " + product.state : "Buy now"}
+          <button type="button" disabled={product.state !== "Live" || Boolean(product.isPreview)} onClick={() => setCheckoutNote("Checkout and payment are not enabled yet.")} className="meta mt-8 w-full bg-primary py-5 text-primary-foreground cine transition-all duration-500 hover:brightness-110 disabled:opacity-50">
+            {product.isPreview ? "Demo preview · not for sale" : product.state !== "Live" ? "Unavailable · " + product.state : "Buy now"}
           </button>
           <a href={"/passport/" + encodeURIComponent(product.passportId || product.objectId)} className="meta group mt-3 flex w-full items-center justify-center gap-2 border border-border py-5 text-foreground cine transition-colors duration-500 hover:border-primary hover:text-primary">
             View product passport
             <ArrowRight className="size-3.5 cine transition-transform duration-500 group-hover:translate-x-1.5" />
           </a>
-          <p role="status" className="meta mt-6 leading-relaxed">{checkoutNote || "Payment is arranged directly with the seller. RELORE records the passport transfer."}</p>
+          <p role="status" className="meta mt-6 leading-relaxed">{checkoutNote || (product.isPreview ? "Fictional sample product shown to preview the marketplace. No real device or passport is available." : "Checkout and payment are not enabled yet.")}</p>
         </div>
       </div>
       <div className="mt-28 grid gap-x-16 gap-y-14 md:grid-cols-2">

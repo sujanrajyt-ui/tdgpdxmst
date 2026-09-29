@@ -8,7 +8,8 @@ export function ProductCard({ product }: { product: Product }) {
       href={`/product/${encodeURIComponent(product.id)}`}
       className="group relative block cine transition-colors duration-500 hover:bg-surface/60 focus-visible:bg-surface/60"
     >
-      <div className="overflow-hidden bg-surface">
+      <div className="relative overflow-hidden bg-surface">
+        {product.isPreview && <span className="meta absolute left-3 top-3 z-10 bg-background/90 px-3 py-2 text-foreground">Demo · not for sale</span>}
         <img
           src={product.image}
           alt={product.name}

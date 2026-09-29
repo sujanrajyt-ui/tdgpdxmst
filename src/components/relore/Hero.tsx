@@ -48,17 +48,17 @@ export function Hero({ product }: { product?: Product }) {
 
   const intro = seg(p, 0, 0.22);
   const open = seg(p, 0.28, 0.6);
-  const used = seg(p, 0.33, 0.46);
-  const verified = seg(p, 0.46, 0.58);
-  const documented = seg(p, 0.58, 0.7);
-  const passport = seg(p, 0.66, 0.82);
-  const remembers = seg(p, 0.76, 0.9);
+  const used = seg(p, 0.25, 0.4);
+  const reported = seg(p, 0.38, 0.53);
+  const recorded = seg(p, 0.51, 0.66);
+  const passport = seg(p, 0.63, 0.82);
+  const remembers = seg(p, 0.76, 0.92);
   const next = seg(p, 0.9, 1);
 
-  const laptopScale = 0.92 + seg(p, 0, 0.5) * 0.18 + next * 0.06;
-  const laptopY = -intro * 3 - seg(p, 0.75, 1) * 16;
-  const laptopX = next * -18;
-  const laptopRot = 8 - seg(p, 0.18, 0.6) * 8;
+  const laptopScale = 0.94 + seg(p, 0, 0.5) * 0.1 + next * 0.02;
+  const laptopY = -intro * 1 - seg(p, 0.75, 1) * 3;
+  const laptopX = next * -4;
+  const laptopRot = 4 - seg(p, 0.18, 0.6) * 4;
   const passportRows = [
     ["Object", product?.objectId ?? "—"],
     ["Condition", product?.condition ?? "—"],
@@ -99,11 +99,10 @@ export function Hero({ product }: { product?: Product }) {
               aria-hidden="true"
               width={1536}
               height={1024}
-              loading="lazy"
-              className="absolute inset-0 w-full"
+              loading="eager"
+              className="absolute left-0 top-0 h-auto w-full"
               style={{
                 opacity: open,
-                clipPath: `inset(${(1 - open) * 46}% 0% 0% 0%)`,
               }}
             />
           </div>
@@ -134,9 +133,9 @@ export function Hero({ product }: { product?: Product }) {
         </div>
 
         {/* Word sequence */}
-        <BigWord label="Used" enter={used} exit={verified} />
-        <BigWord label="Reported" enter={verified} exit={documented} />
-        <BigWord label="Recorded" enter={documented} exit={passport} />
+        <BigWord label="Used" enter={used} exit={reported} />
+        <BigWord label="Reported" enter={reported} exit={recorded} />
+        <BigWord label="Recorded" enter={recorded} exit={passport} />
 
         {/* Passport metadata */}
         <div
