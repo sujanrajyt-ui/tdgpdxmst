@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, Search, ShoppingBag, Tag, Wrench, AlertOctagon, User as UserIcon, Menu, X, Wallet, ChevronDown } from 'lucide-react';
+import { Search, ShoppingBag, Tag, Wrench, AlertOctagon, User as UserIcon, Menu, X, Wallet, ChevronDown } from 'lucide-react';
 import { User } from '../types';
 import { AppStore } from '../core/store';
 import { connectWallet, disconnectWallet, getWalletState } from '../core/mst/wallet';
@@ -86,9 +86,8 @@ export const Navbar: React.FC<Props> = ({ currentView, onNavigate, currentUser, 
         <header className="market-nav fixed inset-x-0 top-0 z-50">
             <div className="market-nav-main">
                 <div className="market-nav-inner">
-                    <button onClick={() => nav('marketplace')} className="market-brand" aria-label="Product Passport home">
-                        <span className="market-brand-icon"><Shield size={23} /></span>
-                        <span className="market-brand-copy"><strong>PASSPORT<span className="market-brand-mst">MST</span></strong><small>BUY • SELL • VERIFY</small></span>
+                    <button onClick={() => nav('marketplace')} className="market-brand" aria-label="Relore home">
+                        <img src="/relore-lockup.svg" alt="Relore" className="market-brand-logo" />
                     </button>
 
                     <form onSubmit={handleSearchSubmit} className="market-search hidden md:flex" role="search">

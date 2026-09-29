@@ -4,7 +4,7 @@ import { AppStore } from '../core/store';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { StatusBadge } from '../components/StatusBadge';
 import { PassportTimeline } from '../components/PassportTimeline';
-import { AIInspectorWidget } from '../components/AIInspectorWidget';
+import { ProductChecksCard } from '../components/ProductChecksCard';
 import { QRModal } from '../components/QRModal';
 import { Shield, QrCode, ArrowRightLeft, Tag, Wrench, Award, AlertOctagon, CheckCircle2, Cpu, FileText, Lock, Calendar, ExternalLink } from 'lucide-react';
 
@@ -168,12 +168,10 @@ export const PassportDetailView: React.FC<Props> = ({
                         </div>
                     </div>
 
-                    {/* AI Inspector & Fraud Risk Engine */}
-                    <AIInspectorWidget
+                    <ProductChecksCard
                         riskLevel={passport.riskLevel}
                         riskScore={passport.riskScore}
                         riskSignals={passport.riskSignals}
-                        conditionReport={passport.conditionReport}
                     />
                 </div>
 

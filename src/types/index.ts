@@ -166,11 +166,11 @@ export interface DisputeRecord {
 }
 
 export interface ConditionReport {
-    display: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
-    body: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
-    batteryHealthPct: number;
-    keyboardPorts: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
-    aiObservationNotes: string[];
+    display: 'NOT_ASSESSED' | 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
+    body: 'NOT_ASSESSED' | 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
+    batteryHealthPct: number | null;
+    keyboardPorts: 'NOT_ASSESSED' | 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
+    observations: string[];
 }
 
 export interface ProductPassport {

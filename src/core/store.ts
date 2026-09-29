@@ -254,9 +254,9 @@ const INITIAL_PASSPORTS: ProductPassport[] = [
             body: 'EXCELLENT',
             batteryHealthPct: 100,
             keyboardPorts: 'EXCELLENT',
-            aiObservationNotes: [
-                'AI Visual Scan: No hairline screen cracks detected.',
-                'AI Enclosure Analysis: Zero dent anomalies on aluminum body.',
+            observations: [
+                'No hairline screen cracks detected.',
+                'No dents detected on the aluminum body.',
                 'Verified Service Record: Battery health confirmed at 100% capacity.'
             ]
         }
@@ -335,7 +335,7 @@ const INITIAL_PASSPORTS: ProductPassport[] = [
             body: 'GOOD',
             batteryHealthPct: 93,
             keyboardPorts: 'EXCELLENT',
-            aiObservationNotes: ['Minor micro-scratches on titanium bezel.', 'Screen glass 100% scratch-free.']
+            observations: ['Minor micro-scratches on titanium bezel.', 'Screen glass is scratch-free.']
         }
     },
     {
@@ -375,7 +375,7 @@ const INITIAL_PASSPORTS: ProductPassport[] = [
             body: 'GOOD',
             batteryHealthPct: 88,
             keyboardPorts: 'EXCELLENT',
-            aiObservationNotes: ['Keyboard clean with minimal key shine.']
+            observations: ['Keyboard clean with minimal key shine.']
         }
     }
 ];
@@ -594,7 +594,9 @@ export class AppStore {
             brand: data.brand,
             model: data.model,
             releaseYear: data.releaseYear,
-            imageUrl: data.imageUrl || 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80',
+            imageUrl: data.imageUrl || (data.category === 'SMARTPHONE'
+                ? 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?auto=format&fit=crop&w=800&q=80'
+                : 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80'),
             additionalImages: [],
             identifier: identifierObj,
             verificationLevel: data.invoiceHash ? 'OWNERSHIP_VERIFIED' : 'IDENTITY_VERIFIED',
@@ -640,11 +642,11 @@ export class AppStore {
             lifecycleHistory: [initialLifecycle],
             disputes: [],
             conditionReport: {
-                display: 'EXCELLENT',
-                body: 'EXCELLENT',
-                batteryHealthPct: 98,
-                keyboardPorts: 'EXCELLENT',
-                aiObservationNotes: ['AI Visual Scan completed.', 'Serial format verified against registry.']
+                display: 'NOT_ASSESSED',
+                body: 'NOT_ASSESSED',
+                batteryHealthPct: null,
+                keyboardPorts: 'NOT_ASSESSED',
+                observations: []
             }
         };
 
