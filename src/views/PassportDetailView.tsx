@@ -22,9 +22,14 @@ export const PassportDetailView: React.FC<Props> = ({
     onOpenMSTExplorer
 }) => {
     const [showQrModal, setShowQrModal] = useState(false);
-    const passport = AppStore.getPassportById(passportId) || AppStore.getPassports()[0];
+    const passport = AppStore.getPassportById(passportId);
+
+    if (!passport) {
+        return <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4"><h1 className="text-2xl font-bold text-white">Passport not found</h1><p className="text-slate-400">Check the passport ID and try again.</p><button onClick={() => onNavigate('marketplace')} className="zayq-btn-primary">Browse marketplace</button></div>;
+    }
 
     const isOwner = passport.currentOwnerId === currentUser.id;
+    const canViewFullIdentifier = isOwner || currentUser.role === 'ADMIN';
     const isStolen = passport.currentStatus === 'STOLEN';
     const isForSale = passport.currentStatus === 'FOR_SALE';
 
@@ -39,7 +44,7 @@ export const PassportDetailView: React.FC<Props> = ({
                         <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2.5 py-0.5 rounded border border-cyan-500/30">
                             {passport.passportId}
                         </span>
-                        <span className="text-xs font-mono text-slate-400">MST Registered Passport</span>
+                        <span className="text-xs font-mono text-slate-400">Product passport · MST testnet demo</span>
                     </div>
                     <h1 className="text-xl font-extrabold text-white font-sans mt-0.5">{passport.model}</h1>
                 </div>
@@ -124,26 +129,26 @@ export const PassportDetailView: React.FC<Props> = ({
                             {passport.identifier.serialNumber && (
                                 <div className="flex justify-between">
                                     <span className="text-slate-500">Serial Number:</span>
-                                    <span className="text-cyan-300 font-bold">{passport.identifier.serialNumber}</span>
+                                    <span className="text-cyan-300 font-bold">{canViewFullIdentifier ? passport.identifier.serialNumber : `••••${passport.identifier.serialNumber.slice(-4)}`}</span>
                                 </div>
                             )}
 
                             {passport.identifier.imei && (
                                 <div className="flex justify-between">
                                     <span className="text-slate-500">IMEI Identifier:</span>
-                                    <span className="text-cyan-300 font-bold">{passport.identifier.imei}</span>
+                                    <span className="text-cyan-300 font-bold">{canViewFullIdentifier ? passport.identifier.imei : `•••••••••••${passport.identifier.imei.slice(-4)}`}</span>
                                 </div>
                             )}
 
                             {passport.identifier.serviceTag && (
                                 <div className="flex justify-between">
                                     <span className="text-slate-500">Service Tag / Frame:</span>
-                                    <span className="text-cyan-300 font-bold">{passport.identifier.serviceTag}</span>
+                                    <span className="text-cyan-300 font-bold">{canViewFullIdentifier ? passport.identifier.serviceTag : `••••${passport.identifier.serviceTag.slice(-4)}`}</span>
                                 </div>
                             )}
 
                             <div className="pt-2 border-t border-slate-800/80">
-                                <span className="text-slate-500 block text-[10px]">On-Chain Privacy Hash:</span>
+                                <span className="text-slate-500 block text-[10px]">Hashed product identifier:</span>
                                 <span className="text-[10px] text-slate-400 break-all">{passport.identifier.hashedIdentifier}</span>
                             </div>
                         </div>
@@ -182,7 +187,7 @@ export const PassportDetailView: React.FC<Props> = ({
                                 <span>Layered Attestations & Claims</span>
                             </h3>
                             <span className="text-xs text-slate-400 font-mono">
-                                {passport.attestations.length} Active On-Chain Claims
+                                {passport.attestations.length} recorded claims
                             </span>
                         </div>
 
@@ -200,7 +205,7 @@ export const PassportDetailView: React.FC<Props> = ({
                                     <span className="font-bold text-slate-200">Ownership Claim</span>
                                     <span className="text-[10px] text-emerald-400 font-mono">INVOICE MATCHED</span>
                                 </div>
-                                <p className="text-slate-400 text-[11px]">Tax invoice evidence hash anchored on MST.</p>
+                                <p className="text-slate-400 text-[11px]">Ownership evidence fingerprint recorded with this passport.</p>
                             </div>
 
                             <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 space-y-1">
@@ -276,7 +281,7 @@ export const PassportDetailView: React.FC<Props> = ({
                                                 onClick={() => onOpenMSTExplorer(svc.mstTxHash)}
                                                 className="text-cyan-400 hover:underline inline-flex items-center gap-1"
                                             >
-                                                <span>MST Service Anchor</span>
+                                                <span>Service record · testnet demo</span>
                                                 <ExternalLink size={10} />
                                             </button>
                                         </div>

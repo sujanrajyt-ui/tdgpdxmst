@@ -1,19 +1,17 @@
 import { ethers } from 'ethers';
-import { getSigner, getProvider, isWalletAvailable } from './wallet';
+import { getSigner, getProvider, MST_TESTNET_CONFIG } from './wallet';
 
-// MST Smart Contract Addresses on MST Testnet
-// UPDATE THESE after running: npx hardhat run scripts/deploy.ts --network testnet
+/** Contract addresses are intentionally empty until the app's contracts are deployed. */
 export const MST_CONTRACT_ADDRESSES = {
-    ProductPassportRegistry: '0x8f3A79b29D121B35C129482759e612F1a0293041',
-    OwnershipRegistry: '0x3c71E1F909A0835D291244195b8390192A02841D',
-    AttestationRegistry: '0x19a0C38148b520421298818501289c8192038102',
-    LifecycleRegistry: '0x99A1b2c4d81298310928a0192841289c10928419',
-    ServiceRegistry: '0x228919f204891280182419c82019b81920391823',
-    WarrantyRegistry: '0x550192a830192830192839102830192830192831',
-    MarketplaceRegistry: '0x7701928301928391203981029381029381029381'
+    ProductPassportRegistry: import.meta.env.VITE_MST_PRODUCT_PASSPORT_REGISTRY || '',
+    OwnershipRegistry: import.meta.env.VITE_MST_OWNERSHIP_REGISTRY || '',
+    AttestationRegistry: import.meta.env.VITE_MST_ATTESTATION_REGISTRY || '',
+    LifecycleRegistry: import.meta.env.VITE_MST_LIFECYCLE_REGISTRY || '',
+    ServiceRegistry: import.meta.env.VITE_MST_SERVICE_REGISTRY || '',
+    WarrantyRegistry: '',
+    MarketplaceRegistry: '',
 };
 
-// Contract ABIs (minimal interfaces matching our Solidity contracts)
 export const CONTRACT_ABIS: Record<string, string[]> = {
     ProductPassportRegistry: [
         'function registerPassport(string _passportId, bytes32 _identifierHash) external',
@@ -51,95 +49,48 @@ export const CONTRACT_ABIS: Record<string, string[]> = {
     ],
 };
 
-/**
- * Get an ethers.Contract instance for a given registry.
- * If wallet is connected, returns a contract attached to the signer (can write).
- * Otherwise returns a read-only contract.
- */
-export function getContract(
-    contractName: keyof typeof MST_CONTRACT_ADDRESSES
-): ethers.Contract {
-    const address = MST_CONTRACT_ADDRESSES[contractName];
-    const abi = CONTRACT_ABIS[contractName];
+export function getContract(contractName: keyof typeof MST_CONTRACT_ADDRESSES): ethers.Contract {
+    // Listing and warranty events are recorded in the general lifecycle registry;
+    // this codebase does not include separate marketplace or warranty contracts.
+    const registryName = contractName === 'MarketplaceRegistry' || contractName === 'WarrantyRegistry'
+        ? 'LifecycleRegistry'
+        : contractName;
+    const address = MST_CONTRACT_ADDRESSES[registryName];
+    const abi = CONTRACT_ABIS[registryName];
 
-    if (!address || !abi) {
-        throw new Error(`Unknown contract: ${contractName}`);
+    if (!address || !ethers.isAddress(address)) {
+        throw new Error(`${registryName} is not configured. Deploy the contracts and set the VITE_MST_* address in .env.local.`);
     }
+    if (!abi) throw new Error(`No contract interface is available for ${registryName}.`);
 
-    if (isWalletAvailable()) {
-        try {
-            const signer = getSigner();
-            return new ethers.Contract(address, abi, signer);
-        } catch {
-            // Wallet not connected — fall through to read-only
-        }
+    try {
+        const provider = getProvider();
+        return new ethers.Contract(address, abi, provider);
+    } catch {
+        const provider = new ethers.JsonRpcProvider(MST_TESTNET_CONFIG.rpcUrl, MST_TESTNET_CONFIG.chainId);
+        return new ethers.Contract(address, abi, provider);
     }
-
-    // Fallback: read-only provider on MST Testnet
-    const provider = new ethers.JsonRpcProvider('https://rpc.masterstroke.academy');
-    return new ethers.Contract(address, abi, provider);
 }
 
 export class MSTContractBridge {
-    private static blockHeight = 18492041;
-
-    /**
-     * Execute a real on-chain contract call.
-     * Sends a transaction via the connected Bridgekey wallet.
-     */
+    /** Submit a user-approved transaction and only report success after mining. */
     public static async executeContractCall(
         contractName: keyof typeof MST_CONTRACT_ADDRESSES,
         methodName: string,
-        params: any[]
-    ): Promise<{ success: boolean; txHash: string; blockNumber: number; gasUsed: number }> {
-        try {
-            const contract = getContract(contractName);
-            const tx = await contract[methodName](...params);
-            const receipt = await tx.wait();
-
-            return {
-                success: true,
-                txHash: receipt.hash,
-                blockNumber: receipt.blockNumber,
-                gasUsed: Number(receipt.gasUsed),
-            };
-        } catch (error: any) {
-            console.error(`Contract call failed [${contractName}.${methodName}]:`, error);
-
-            // Fallback to simulation if wallet not connected
-            return this.simulateContractCall(contractName, methodName, params);
-        }
-    }
-
-    /**
-     * Fallback simulation (used when wallet is not connected).
-     */
-    public static simulateContractCall(
-        _contractName: keyof typeof MST_CONTRACT_ADDRESSES,
-        _methodName: string,
-        _params: any
-    ): { success: boolean; txHash: string; blockNumber: number; gasUsed: number } {
-        const txHash = this.generateTxHash();
-        const blockNumber = this.getNextBlockNumber();
-        return {
-            success: true,
-            txHash,
-            blockNumber,
-            gasUsed: Math.floor(Math.random() * 150000) + 45000,
-        };
-    }
-
-    public static generateTxHash(): string {
-        const chars = '0123456789abcdef';
-        let hash = '0x';
-        for (let i = 0; i < 64; i++) {
-            hash += chars[Math.floor(Math.random() * chars.length)];
-        }
-        return hash;
-    }
-
-    public static getNextBlockNumber(): number {
-        this.blockHeight += 1;
-        return this.blockHeight;
+        params: unknown[]
+    ): Promise<{ success: true; txHash: string; blockNumber: number; gasUsed: number }> {
+        const contract = new ethers.Contract(
+            (contractName === 'MarketplaceRegistry' || contractName === 'WarrantyRegistry'
+                ? MST_CONTRACT_ADDRESSES.LifecycleRegistry
+                : MST_CONTRACT_ADDRESSES[contractName]),
+            CONTRACT_ABIS[contractName === 'MarketplaceRegistry' || contractName === 'WarrantyRegistry'
+                ? 'LifecycleRegistry'
+                : contractName],
+            getSigner()
+        );
+        const tx = await contract[methodName](...params);
+        const receipt = await tx.wait();
+        if (!receipt || receipt.status !== 1) throw new Error('The MST transaction did not succeed.');
+        return { success: true, txHash: receipt.hash, blockNumber: receipt.blockNumber, gasUsed: Number(receipt.gasUsed) };
     }
 }

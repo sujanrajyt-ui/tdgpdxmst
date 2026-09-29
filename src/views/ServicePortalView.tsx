@@ -154,11 +154,11 @@ export const ServicePortalView: React.FC<Props> = ({
                         className="w-full bg-gradient-to-r from-amber-600 to-cyan-600 hover:from-amber-500 hover:to-cyan-500 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-lg shadow-amber-900/30 flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {isSubmitting ? (
-                            <span>Anchoring Service Attestation on MST ServiceRegistry...</span>
+                            <span>Saving service record…</span>
                         ) : (
                             <>
                                 <Wrench size={16} />
-                                <span>Anchor Service Attestation on MST Blockchain</span>
+                                <span>Add service record to passport</span>
                             </>
                         )}
                     </button>
@@ -169,9 +169,9 @@ export const ServicePortalView: React.FC<Props> = ({
                 <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl space-y-2 text-xs font-mono">
                     <div className="flex items-center gap-2 text-emerald-300 font-bold">
                         <CheckCircle2 size={16} />
-                        <span>Service Attestation Confirmed on MST ServiceRegistry!</span>
+                        <span>Service record added to passport</span>
                     </div>
-                    <p className="text-slate-300">Transaction Hash: {submittedRecord.mstTxHash}</p>
+                    <p className="text-slate-300">{submittedRecord.mstTxHash ? `MST Testnet transaction: ${submittedRecord.mstTxHash}` : 'Saved in this browser only. No blockchain transaction was submitted.'}</p>
                     <button
                         onClick={() => onNavigate('passport-detail', targetPassportId)}
                         className="text-cyan-400 hover:underline inline-flex items-center gap-1 font-bold"

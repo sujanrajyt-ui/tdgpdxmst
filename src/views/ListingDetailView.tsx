@@ -12,20 +12,27 @@ interface Props {
 }
 
 export const ListingDetailView: React.FC<Props> = ({ listingId, currentUser, onNavigate }) => {
-    const listing = AppStore.getListingById(listingId) || AppStore.getListings()[0];
-    const passport = AppStore.getPassportById(listing.passportId);
+    const listing = AppStore.getListingById(listingId);
+    const passport = listing ? AppStore.getPassportById(listing.passportId) : undefined;
 
     const [isProcessing, setIsProcessing] = useState(false);
+    const [purchaseError, setPurchaseError] = useState('');
 
-    if (!passport) return null;
+    if (!listing || !passport) return <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4"><h1 className="text-2xl font-bold text-white">Listing not found</h1><p className="text-slate-400">This product may have been removed. Browse active listings to find another item.</p><button onClick={() => onNavigate('marketplace')} className="zayq-btn-primary">Browse marketplace</button></div>;
 
     const isSeller = listing.sellerId === currentUser.id;
 
     const handleInitiatePurchase = async () => {
+        setPurchaseError('');
         setIsProcessing(true);
-        const updatedListing = await AppStore.initiatePurchase(listing.id, currentUser);
-        setIsProcessing(false);
-        onNavigate('escrow-handover', updatedListing.id);
+        try {
+            const updatedListing = await AppStore.initiatePurchase(listing.id, currentUser);
+            onNavigate('escrow-handover', updatedListing.id);
+        } catch (error) {
+            setPurchaseError(error instanceof Error ? error.message : 'Purchase could not be started.');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -49,7 +56,15 @@ export const ListingDetailView: React.FC<Props> = ({ listingId, currentUser, onN
                     {passport.additionalImages.length > 0 && (
                         <div className="grid grid-cols-2 gap-2">
                             {passport.additionalImages.map((img, idx) => (
-                                <img key={idx} src={img} alt="Detail" className="w-full h-24 object-cover rounded-xl border border-slate-800 bg-slate-950" />
+                                <img
+                                    key={idx}
+                                    src={img}
+                                    alt="Detail"
+                                    className="w-full h-24 object-cover rounded-xl border border-slate-800 bg-slate-950"
+                                    onError={(e) => {
+                                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                                    }}
+                                />
                             ))}
                         </div>
                     )}
@@ -81,15 +96,21 @@ export const ListingDetailView: React.FC<Props> = ({ listingId, currentUser, onN
                                 <span className="text-3xl font-extrabold text-white font-mono">₹{listing.price.toLocaleString()}</span>
                             </div>
                             <span className="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full font-mono">
-                                Escrow Protected
+                                Guided handover demo
                             </span>
                         </div>
 
-                        {listing.status === 'PENDING_TRANSFER' ? (
+                        {purchaseError && <p role="alert" className="text-sm text-rose-300">{purchaseError}</p>}
+                        <p className="text-xs text-slate-400">Demo mode: no payment is collected or held. The handover updates the passport record in this browser.</p>
+                        {listing.status === 'PENDING_REVIEW' ? (
+                            <p className="rounded-xl border border-amber-700 bg-amber-950/30 p-3 text-sm text-amber-200">This listing is waiting for marketplace admin review before it can be seen by buyers.</p>
+                        ) : listing.status === 'REJECTED' ? (
+                            <p className="rounded-xl border border-rose-800 bg-rose-950/30 p-3 text-sm text-rose-200">This listing was not approved for publication.</p>
+                        ) : listing.status === 'PENDING_TRANSFER' ? (
                             <div className="bg-purple-500/10 border border-purple-500/30 p-3 rounded-xl text-purple-300 text-xs font-mono space-y-2">
                                 <div className="flex items-center gap-1.5 font-bold">
                                     <ArrowRightLeft size={16} />
-                                    <span>Transfer Pending Escrow Confirmation</span>
+                                    <span>Purchase started · handover pending</span>
                                 </div>
                                 <button
                                     onClick={() => onNavigate('escrow-handover', listing.id)}
@@ -98,6 +119,8 @@ export const ListingDetailView: React.FC<Props> = ({ listingId, currentUser, onN
                                     Open Handover & Dual Confirmation Screen
                                 </button>
                             </div>
+                        ) : listing.status !== 'ACTIVE' ? (
+                            <p className="rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300">This listing is no longer available.</p>
                         ) : isSeller ? (
                             <p className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl font-mono">
                                 You are the seller of this listing. Manage handover when a buyer deposits funds.
@@ -109,11 +132,11 @@ export const ListingDetailView: React.FC<Props> = ({ listingId, currentUser, onN
                                 className="zayq-btn-primary w-full flex items-center justify-center gap-2"
                             >
                                 {isProcessing ? (
-                                    <span>Initializing Escrow Protected Transfer...</span>
+                                    <span>Starting handover…</span>
                                 ) : (
                                     <>
                                         <Lock size={18} />
-                                        <span>Purchase with MST Escrow Protection</span>
+                                        <span>Start purchase and handover</span>
                                     </>
                                 )}
                             </button>

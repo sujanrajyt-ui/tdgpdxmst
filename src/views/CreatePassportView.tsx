@@ -19,7 +19,9 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
     const [serviceTag, setServiceTag] = useState('');
     const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80');
     const [invoiceTitle, setInvoiceTitle] = useState('Official Tax Invoice & Store Receipt');
-    const [hasInvoice, setHasInvoice] = useState(true);
+    const [hasInvoice, setHasInvoice] = useState(false);
+    const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+    const [formError, setFormError] = useState('');
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [aiAutofillUsed, setAiAutofillUsed] = useState(false);
@@ -43,26 +45,39 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFormError('');
+        if (hasInvoice && !invoiceFile) {
+            setFormError('Choose an invoice file first, or uncheck invoice verification to continue.');
+            return;
+        }
         setIsSubmitting(true);
 
-        const invoiceHash = hasInvoice ? `0xINVOICE_${Math.floor(100000 + Math.random() * 900000)}` : undefined;
+        try {
+            let invoiceHash: string | undefined;
+            if (hasInvoice && invoiceFile) {
+                const digest = await crypto.subtle.digest('SHA-256', await invoiceFile.arrayBuffer());
+                invoiceHash = `0x${Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('')}`;
+            }
 
-        const { passport, anchorTx } = await AppStore.createPassport({
-            category,
-            brand,
-            model,
-            releaseYear,
-            serialNumber: serialNumber || undefined,
-            imei: imei || undefined,
-            serviceTag: serviceTag || undefined,
-            imageUrl,
-            invoiceTitle,
-            invoiceHash,
-            currentUser
-        });
-
-        setIsSubmitting(false);
-        onNavigate('passport-detail', passport.passportId);
+            const { passport } = await AppStore.createPassport({
+                category,
+                brand,
+                model,
+                releaseYear,
+                serialNumber: serialNumber || undefined,
+                imei: imei || undefined,
+                serviceTag: serviceTag || undefined,
+                imageUrl,
+                invoiceTitle: invoiceFile?.name || invoiceTitle,
+                invoiceHash,
+                currentUser
+            });
+            onNavigate('passport-detail', passport.passportId);
+        } catch (error) {
+            setFormError(error instanceof Error ? error.message : 'The passport could not be created.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -75,7 +90,7 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
                     </ZayqEyebrow>
                 }
                 title="Register New Product Passport"
-                description="Create a persistent digital identity anchored on MST smart contracts."
+                description="Register a product identity, attach ownership evidence, and keep its service and ownership history together."
                 actions={
                     <button
                         onClick={handleAiAssist}
@@ -213,8 +228,12 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
 
                     <div className="bg-slate-950 p-4 border border-dashed border-slate-700 rounded-xl text-center space-y-2">
                         <Upload size={24} className="mx-auto text-cyan-400" />
-                        <p className="text-xs text-slate-300 font-medium">Drag & drop tax invoice or proof of purchase</p>
-                        <p className="text-[10px] text-slate-500 font-mono">Invoice document hash will be computed via WASMify and anchored on MST</p>
+                        <p className="text-xs text-slate-300 font-medium">Choose a tax invoice or proof of purchase</p>
+                        <label className="block cursor-pointer rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-cyan-200 hover:border-cyan-500">
+                            <span>{invoiceFile ? invoiceFile.name : 'Choose invoice or proof of purchase'}</span>
+                            <input type="file" accept="application/pdf,image/*" className="sr-only" onChange={(event) => setInvoiceFile(event.target.files?.[0] || null)} />
+                        </label>
+                        <p className="text-[10px] text-slate-500">A SHA-256 fingerprint is calculated in your browser. The file itself is not uploaded or stored by this demo.</p>
                     </div>
 
                     <div className="flex items-center gap-2 text-xs text-slate-300">
@@ -225,9 +244,11 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
                             onChange={(e) => setHasInvoice(e.target.checked)}
                             className="rounded bg-slate-900 border-slate-700 text-cyan-500 focus:ring-cyan-500"
                         />
-                        <label htmlFor="invoiceCheck">Include verified purchase invoice for initial OWNERSHIP_VERIFIED tier</label>
+                        <label htmlFor="invoiceCheck">Use this file as ownership evidence</label>
                     </div>
                 </div>
+
+                {formError && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{formError}</p>}
 
                 {/* Image URL */}
                 <div>
@@ -248,11 +269,11 @@ export const CreatePassportView: React.FC<Props> = ({ currentUser, onNavigate })
                     className="zayq-btn-primary w-full flex items-center justify-center gap-2"
                 >
                     {isSubmitting ? (
-                        <span>Computing WASMify Proof & Anchoring on MST...</span>
+                        <span>Creating product passport…</span>
                     ) : (
                         <>
                             <Shield size={18} />
-                            <span>Create Passport & Anchor Identity on MST</span>
+                            <span>Create product passport</span>
                         </>
                     )}
                 </button>

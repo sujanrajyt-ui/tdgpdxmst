@@ -19,12 +19,15 @@ export type ProductStatus =
 
 export type RiskLevel = 'LOW_RISK' | 'REVIEW_REQUIRED' | 'HIGH_RISK';
 
-export type UserRole = 'CONSUMER' | 'SERVICE_CENTER' | 'INSPECTOR' | 'ADMIN';
+export type UserRole = 'CONSUMER' | 'SELLER' | 'SERVICE_CENTER' | 'INSPECTOR' | 'ADMIN';
 
 export interface User {
     id: string;
     name: string;
     email: string;
+    /** Connected EVM wallet for signing product and marketplace transactions. */
+    walletAddress?: string;
+    sellerStatus?: 'NOT_APPLIED' | 'PENDING' | 'APPROVED' | 'REJECTED';
     role: UserRole;
     mstIdentityDid: string;
     saralVerified: boolean;
@@ -126,6 +129,7 @@ export type LifecycleEventType =
     | 'INSPECTED'
     | 'SERVICED'
     | 'LISTED'
+    | 'CANCELLED'
     | 'SOLD'
     | 'TRANSFERRED'
     | 'DISPUTED'
@@ -204,6 +208,7 @@ export interface MarketplaceListing {
     id: string;
     passportId: string;
     sellerId: string;
+    buyerId?: string;
     sellerName: string;
     sellerReputation: number;
     sellerDid: string;
@@ -212,9 +217,9 @@ export interface MarketplaceListing {
     location: string;
     title: string;
     description: string;
-    status: 'ACTIVE' | 'PENDING_TRANSFER' | 'SOLD' | 'CANCELLED';
+    status: 'PENDING_REVIEW' | 'ACTIVE' | 'PENDING_TRANSFER' | 'SOLD' | 'CANCELLED' | 'REJECTED';
     listedAt: string;
-    escrowStatus?: 'IDLE' | 'FUNDS_DEPOSITED' | 'HANDOVER_CONFIRMED' | 'RELEASED';
+    escrowStatus?: 'IDLE' | 'PURCHASE_STARTED' | 'HANDOVER_CONFIRMED' | 'RELEASED';
     handoverCodeSeller?: string;
     handoverCodeBuyer?: string;
 }
@@ -228,7 +233,9 @@ export interface MSTAnchor {
     contractName: 'ProductPassportRegistry' | 'OwnershipRegistry' | 'AttestationRegistry' | 'LifecycleRegistry' | 'ServiceRegistry' | 'WarrantyRegistry' | 'MarketplaceRegistry';
     transactionHash: string;
     blockNumber: number;
-    status: 'PENDING' | 'SUBMITTED' | 'CONFIRMED' | 'FAILED';
+    status: 'PENDING' | 'SUBMITTED' | 'CONFIRMED' | 'FAILED' | 'LOCAL_ONLY';
+    /** True when the UI generated a local demo receipt instead of a network transaction. */
+    simulated?: boolean;
     createdAt: string;
     confirmedAt?: string;
     errorMessage?: string;

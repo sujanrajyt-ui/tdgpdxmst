@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, ProductPassport } from './types';
-import { CURRENT_USER, AppStore } from './core/store';
+import { AppStore } from './core/store';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { MSTExplorerModal } from './components/MSTExplorerModal';
 import { SaralAuthModal } from './components/SaralAuthModal';
+import { getWalletSession, type ApiUser } from './core/api';
 
 import { LandingView } from './views/LandingView';
 import { UserDashboardView } from './views/UserDashboardView';
@@ -16,12 +17,57 @@ import { EscrowHandoverView } from './views/EscrowHandoverView';
 import { ServicePortalView } from './views/ServicePortalView';
 import { AdminConsoleView } from './views/AdminConsoleView';
 import { StolenDisputeView } from './views/StolenDisputeView';
-import { MSTEcosystemView } from './views/MSTEcosystemView';
+
+
+const LOCAL_GUEST: User = {
+    id: 'LOCAL-GUEST',
+    name: 'Marketplace Guest',
+    email: '',
+    role: 'CONSUMER',
+    mstIdentityDid: 'did:mst:local:guest',
+    saralVerified: false,
+    reputationScore: 0,
+};
 
 export function App() {
     const [currentView, setCurrentView] = useState<string>('landing');
     const [viewParam, setViewParam] = useState<string | undefined>(undefined);
-    const [currentUser, setCurrentUser] = useState<User>(CURRENT_USER);
+    const [, setStoreRevision] = useState(0);
+    const [currentUser, setCurrentUser] = useState<User>(() => {
+        try {
+            const savedUser = localStorage.getItem('passport-marketplace-user');
+            if (!savedUser) return LOCAL_GUEST;
+            const user = JSON.parse(savedUser) as User;
+            if (['ADMIN', 'SERVICE_CENTER', 'INSPECTOR'].includes(user.role)) return LOCAL_GUEST;
+            return { ...user, role: 'CONSUMER' };
+        } catch {
+            return LOCAL_GUEST;
+        }
+    });
+
+    useEffect(() => {
+        let active = true;
+        getWalletSession().then(account => {
+            if (!active) return;
+            if (account) setCurrentUser(userFromApiAccount(account));
+            void AppStore.syncFromApi(account?.walletAddress).then(() => { if (active) setStoreRevision(revision => revision + 1); });
+        });
+        return () => { active = false; };
+    }, []);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem('passport-marketplace-user', JSON.stringify(currentUser));
+            if (currentUser.walletAddress) {
+                const saved = localStorage.getItem('passport-marketplace-wallet-profiles');
+                const profiles = saved ? JSON.parse(saved) as Record<string, User> : {};
+                profiles[currentUser.walletAddress.toLowerCase()] = currentUser;
+                localStorage.setItem('passport-marketplace-wallet-profiles', JSON.stringify(profiles));
+            }
+        } catch (error) {
+            console.warn('Could not save the local profile in this browser.', error);
+        }
+    }, [currentUser]);
 
     // Modals
     const [mstExplorerOpen, setMstExplorerOpen] = useState(false);
@@ -37,6 +83,40 @@ export function App() {
     const handleOpenMSTExplorer = (txHash?: string) => {
         setSelectedTxHash(txHash);
         setMstExplorerOpen(true);
+    };
+
+    const handleWalletConnected = (address: string, account?: ApiUser) => {
+        const key = address.toLowerCase();
+        if (account) {
+            setCurrentUser(userFromApiAccount(account));
+            void AppStore.syncFromApi(account.walletAddress).then(() => setStoreRevision(revision => revision + 1));
+            window.dispatchEvent(new CustomEvent('mst-wallet-connected', { detail: address }));
+            return;
+        }
+        try {
+            const saved = localStorage.getItem('passport-marketplace-wallet-profiles');
+            const profiles = saved ? JSON.parse(saved) as Record<string, User> : {};
+            const profile = profiles[key] || {
+                id: `MST-${key}`,
+                name: `MST user ${address.slice(-4)}`,
+                email: '',
+                role: 'CONSUMER' as const,
+                mstIdentityDid: `did:mst:wallet:${key}`,
+                saralVerified: false,
+                reputationScore: 0,
+                walletAddress: address,
+            };
+            setCurrentUser({ ...profile, role: 'CONSUMER', walletAddress: address });
+            window.dispatchEvent(new CustomEvent('mst-wallet-connected', { detail: address }));
+        } catch {
+            setCurrentUser({
+                ...LOCAL_GUEST,
+                id: `MST-${key}`,
+                name: `MST user ${address.slice(-4)}`,
+                mstIdentityDid: `did:mst:wallet:${key}`,
+                walletAddress: address,
+            });
+        }
     };
 
     // Render view router
@@ -66,6 +146,9 @@ export function App() {
                 return (
                     <MarketplaceView
                         onNavigate={handleNavigate}
+                        currentUser={currentUser}
+                        listPassportId={currentView === 'create-listing' ? viewParam : undefined}
+                        initialSearchQuery={currentView === 'marketplace' ? viewParam : undefined}
                     />
                 );
             case 'listing-detail':
@@ -111,13 +194,6 @@ export function App() {
                         onOpenMSTExplorer={handleOpenMSTExplorer}
                     />
                 );
-            case 'mst-ecosystem':
-                return (
-                    <MSTEcosystemView
-                        onNavigate={handleNavigate}
-                        onOpenExplorer={() => handleOpenMSTExplorer()}
-                    />
-                );
             default:
                 return (
                     <LandingView
@@ -128,24 +204,23 @@ export function App() {
     };
 
     return (
-        <div className="light-app min-h-screen bg-[#f4f2ec] font-sans text-[#171815] selection:bg-[#d6ed73] selection:text-[#171815]">
+        <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500 selection:text-black">
             {/* Global Navigation Bar */}
             <Navbar
                 currentView={currentView}
                 currentUser={currentUser}
                 onNavigate={handleNavigate}
                 onOpenSaralModal={() => setSaralModalOpen(true)}
+                onWalletConnected={handleWalletConnected}
             />
 
             {/* Main View Render */}
-            <main className="pt-24 min-h-[calc(100vh-200px)]">
+            <main className="app-main pt-[104px] min-h-[calc(100vh-200px)]">
                 {renderView()}
             </main>
 
             {/* Global Footer */}
-            <Footer
-                onNavigate={handleNavigate}
-            />
+            <Footer />
 
             {/* MST Explorer Modal */}
             <MSTExplorerModal
@@ -160,7 +235,22 @@ export function App() {
                 onClose={() => setSaralModalOpen(false)}
                 currentUser={currentUser}
                 onSelectUser={(user) => setCurrentUser(user)}
+                onWalletConnected={handleWalletConnected}
             />
         </div>
     );
+}
+
+function userFromApiAccount(account: ApiUser): User {
+    return {
+        id: account.id,
+        name: account.name || `MST user ${account.walletAddress.slice(-4)}`,
+        email: '',
+        role: account.role,
+        mstIdentityDid: `did:mst:wallet:${account.walletAddress.toLowerCase()}`,
+        saralVerified: false,
+        reputationScore: 0,
+        walletAddress: account.walletAddress,
+        sellerStatus: account.sellerStatus,
+    };
 }

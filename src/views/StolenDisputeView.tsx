@@ -124,13 +124,13 @@ export const StolenDisputeView: React.FC<Props> = ({
                         className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-lg shadow-rose-900/30 flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {isSubmitting ? (
-                            <span>Flagging Passport & Anchoring Stolen Status on MST...</span>
+                            <span>Submitting report…</span>
                         ) : passport.currentStatus === 'STOLEN' ? (
                             <span>Passport Currently Flagged as STOLEN</span>
                         ) : (
                             <>
                                 <AlertOctagon size={16} />
-                                <span>Flag Passport STOLEN & Anchor on MST</span>
+                                <span>Report theft or dispute</span>
                             </>
                         )}
                     </button>

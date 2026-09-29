@@ -1,75 +1,58 @@
-# Product Passport 🛡️
+# Product Passport Marketplace
 
-### MST-Native Product Identity Network + Trusted Second-Hand Marketplace
+Marketplace UI for buying and selling second-hand products with product passports, ownership history, and service records.
 
-> **"Every product has a history. Verify it."**
+## Run locally
 
-Product Passport is a persistent physical product identity network built on MST. Today, second-hand commerce primarily trusts the seller. Product Passport changes the trust model: **Trust the product's verifiable history, not just the seller's description.**
-
----
-
-## 🚀 Key Architectural Principles
-
-1. **Persistent Product Identity**: Every valuable physical product receives a permanent Product Passport ID (`PP-82941`) that survives seller changes, marketplace transfers, resales, refurbishments, and repairs.
-2. **MST First Integration**:
-   - **ProductPassportRegistry**: Anchor root digital identity and status.
-   - **OwnershipRegistry**: Manage cryptographic owner transitions with dual-confirmation escrow.
-   - **AttestationRegistry**: Store evidence hashes and verification claims (`IDENTITY_VERIFIED`, `OWNERSHIP_VERIFIED`, `PROFESSIONALLY_INSPECTED`, `MANUFACTURER_VERIFIED`).
-   - **ServiceRegistry**: Authorized service centers record verified repairs (battery/screen replacements) directly onto the passport.
-   - **LifecycleRegistry**: Immutable historical record of all lifecycle events.
-3. **No NFC Requirement**: Physical authentication uses category-specific identifiers (IMEI, Serial Number, Service Tag) + evidence + cryptographically anchored attestations. QR codes serve strictly for navigation convenience (`/passport/PP-XXXXX`).
-4. **SARAL Simplified Onboarding**: Seamless Web2-to-Web3 authentication deriving MST DIDs without forcing crypto knowledge, gas fees, or raw keys onto everyday consumers.
-5. **WASMify Heavy Verification Bridge**: Off-chain document/signature cryptographic proofs verified inside WebAssembly execution environments and anchored on-chain.
-6. **AI Fraud & Risk Engine**: AI assists with listing auto-extraction, visual condition scanning, and fraud anomaly detection (`LOW_RISK`, `REVIEW_REQUIRED`, `HIGH_RISK`). AI never unilaterally certifies authenticity.
-
----
-
-## 💻 Tech Stack
-
-- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, Lucide Icons
-- **Backend / Store**: Node.js / TypeScript simulation engine, async MST transaction anchor queue with auto-retry
-- **Blockchain Abstraction**: EVM/MST Smart Contract simulation (`0x8f3A...`), SARAL DID provider, WASMify proof engine
-- **Portals**:
-  - Landing Page & Identity Explorer
-  - User Dashboard (Passports, Listings, Pending Escrow Transfers)
-  - Create Passport & AI Listing Assistant
-  - Layered Claims Verification Console
-  - Public Passport View (`/passport/:id`) with Timeline & Verification Audit
-  - Marketplace & Protected Purchase Escrow Flow
-  - Authorized Service Center Portal
-  - Admin Verification & Stolen Dispute Console
-  - MST Block & Anchor Explorer
-
----
-
-## 🎬 Killer Demo Sequence (Step-by-Step)
-
-1. **Create Passport (`PP-82941`)**: Register a MacBook Air M3 with serial `C02G1928M3XX` and upload invoice evidence.
-2. **Ownership Verification**: System executes WASMify proof and anchors identity + ownership attestation on MST `ProductPassportRegistry` and `AttestationRegistry`.
-3. **Service Attestation**: Switch to the **Service Center Portal** (`iCare Service Center`) and record a verified OEM battery replacement for `PP-82941`. Anchor on `ServiceRegistry`.
-4. **Marketplace Listing**: List the MacBook Air M3 on the marketplace for ₹62,000. Status updates to `FOR_SALE`.
-5. **Buyer Discovery**: Switch perspective to Buyer (`Priya Verma`). Inspect the verified Passport history, TechCert 9.8/10 inspection score, and zero stolen flags.
-6. **Protected Escrow Purchase**: Initiate purchase. Status changes to `TRANSFER_PENDING` with dual handover verification codes generated.
-7. **Dual Handover Confirmation**: Seller and Buyer input handover codes. Executing `OwnershipRegistry.completeTransfer` submits an MST blockchain transaction.
-8. **Passport Identity Persistence**: Refresh Passport `PP-82941`. The owner updates from **Arjun Mehta** to **Priya Verma**, while the Passport ID `PP-82941` and complete multi-year service/inspection history remain intact!
-
----
-
-## ⚡ Quick Start
+Use Node.js 24 or newer for the built-in SQLite backend. Install dependencies once, then run the API and UI in separate terminals:
 
 ```bash
-# Install dependencies
 npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
 ```
 
----
+```bash
+npm run api
+```
 
-## 📜 Final Product Principle
+```bash
+npm run dev
+```
 
-> *The marketplace can change. The seller can change. The owner can change. The product's verified identity and history should not.*
+The API stores accounts, passports, listings, seller applications, evidence metadata/files, sessions, and admin audit events in `.data/marketplace.sqlite` and `.data/evidence/`. The Vite dev server proxies `/api` to the API. Wallet sign-in uses a one-time server nonce and an EVM signature; signatures do not send transactions. Add public admin wallet addresses to `ADMIN_WALLETS` in the ignored local `.env` file.
+
+The React screens still use the browser store for their catalog and demo workflows. The API exposes authenticated write endpoints, but those screens have not yet been migrated to load and mutate the shared records. Do not mistake local display data for shared marketplace data.
+
+### Backend API
+
+- `GET /api/health`, `POST /api/auth/nonce`, `POST /api/auth/verify`, `POST /api/auth/logout`, `GET /api/me`, and `PATCH /api/me`
+- `GET /api/passports`, `GET /api/passports/:id`, and authenticated `POST /api/passports`
+- `GET /api/listings` and seller-authenticated `POST /api/listings` (new listings enter admin review)
+- `POST /api/seller-applications`, admin-only `GET /api/admin/review-queue`, `PATCH /api/admin/listings/:id`, and `PATCH /api/admin/sellers/:wallet`
+- Authenticated private evidence upload/download and admin audit-log endpoints
+
+The local SQLite database is suitable for development on one machine. Before a public launch, move it to a managed PostgreSQL database and private object storage, add migrations and backups, and deploy the API behind HTTPS.
+
+## MST Testnet transactions
+
+The app targets MST Testnet (`https://testnetrpc.mstblockchain.com`, chain ID `91562037`, tMSTC). Connect an EVM wallet from the header. Each real write asks the connected wallet to approve the transaction. Without a connected wallet, actions are stored as `LOCAL_ONLY` and have no transaction hash.
+
+To deploy the included contracts:
+
+1. Copy `.env.example` to `.env` and set `PRIVATE_KEY` to a testnet-only deployment key. Keep it secret and never add it to a `VITE_*` variable.
+2. Fund that account with test MSTC from the MST Testnet faucet.
+3. Run `npx hardhat compile` and `npx hardhat run scripts/deploy.ts --network testnet`.
+4. Copy the printed registry addresses into `.env.local` using the `VITE_MST_*` variable names in `.env.example`, then restart Vite.
+
+The contract addresses in the browser are intentionally blank until a deployment is configured. No contracts are deployed by this repository setup. Listing and warranty events use `LifecycleRegistry`; they are not separate contracts. Marketplace listings themselves remain local data.
+
+## Before a public launch
+
+- Migrate React screens from browser storage to the API; the API currently exists alongside the local demo store.
+- Configure a real payment provider adapter, signed webhooks, settlements, refunds, cancellations, chargebacks, and disputes. Checkout is intentionally disabled until an adapter is implemented.
+- Add an on-chain event indexer and reconciliation worker after deploying and configuring the registry contracts.
+- Complete and review the two-party on-chain ownership transfer workflow. The current UI's one-step transfer is local demo behavior and is blocked from claiming an on-chain ownership transfer.
+- Replace local SQLite/files with managed PostgreSQL and private object storage; configure backups, monitoring, rate limits, abuse reporting, and data-retention procedures.
+- Review and secure the contracts before mainnet use. Some on-chain registry write methods still lack issuer/admin access controls.
+- Validate deployed contract addresses and source code on the explorer; define admin-key rotation, incident response, and recovery procedures.
+
+This repository now includes a local backend foundation and optional wallet-to-contract path. The marketplace UI, checkout, event indexing, and deployed contracts are not yet production-ready.

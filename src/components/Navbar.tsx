@@ -1,61 +1,141 @@
-import React, { useState } from 'react';
-import { Shield, Search, PlusCircle, Store, Wrench, AlertOctagon, User as UserIcon } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Shield, Search, ShoppingBag, Tag, Wrench, AlertOctagon, User as UserIcon, Menu, X, Wallet, ChevronDown } from 'lucide-react';
 import { User } from '../types';
+import { AppStore } from '../core/store';
+import { connectWallet, disconnectWallet, getWalletState } from '../core/mst/wallet';
+import { signInWithWallet, signOutFromApi, type ApiUser } from '../core/api';
 
 interface Props {
     currentView: string;
     onNavigate: (view: string, param?: string) => void;
     currentUser: User;
     onOpenSaralModal: () => void;
+    onWalletConnected: (address: string, account?: ApiUser) => void;
 }
 
-export const Navbar: React.FC<Props> = ({ currentView, onNavigate, currentUser, onOpenSaralModal }) => {
+export const Navbar: React.FC<Props> = ({ currentView, onNavigate, currentUser, onOpenSaralModal, onWalletConnected }) => {
     const [passportSearch, setPassportSearch] = useState('');
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const [walletAddress, setWalletAddress] = useState(() => getWalletState().address);
+    const [walletMessage, setWalletMessage] = useState('');
+    const [walletBusy, setWalletBusy] = useState(false);
+
+    useEffect(() => {
+        const onConnected = (event: Event) => setWalletAddress((event as CustomEvent<string>).detail);
+        window.addEventListener('mst-wallet-connected', onConnected);
+        return () => window.removeEventListener('mst-wallet-connected', onConnected);
+    }, []);
 
     const handleSearchSubmit = (event: React.FormEvent) => {
         event.preventDefault();
-        if (passportSearch.trim()) onNavigate('passport-detail', passportSearch.trim().toUpperCase());
+        const query = passportSearch.trim();
+        if (!query) return;
+        if (/^PP-[\w-]+$/i.test(query)) onNavigate('passport-detail', query.toUpperCase());
+        else onNavigate('marketplace', query);
+        setMobileOpen(false);
     };
 
-    const navItems = [
-        { label: 'Marketplace', view: 'marketplace', icon: Store },
-        { label: 'My Passports', view: 'dashboard', icon: UserIcon },
-    ];
+    const handleSell = () => {
+        const ownedProducts = AppStore.getPassports().filter(passport => passport.currentOwnerId === currentUser.id);
+        const availableToList = ownedProducts.filter(passport =>
+            ['ACTIVE', 'RECOVERED'].includes(passport.currentStatus) &&
+            !AppStore.getListings().some(listing => listing.passportId === passport.passportId && ['PENDING_REVIEW', 'ACTIVE', 'PENDING_TRANSFER'].includes(listing.status))
+        );
+        if (!ownedProducts.length) onNavigate('create-passport');
+        else if (availableToList.length === 1) onNavigate('create-listing', availableToList[0].passportId);
+        else onNavigate('dashboard');
+        setMobileOpen(false);
+    };
+
+    const handleWallet = async () => {
+        if (walletAddress) {
+            void signOutFromApi();
+            disconnectWallet();
+            setWalletAddress(null);
+            setWalletMessage('Wallet disconnected from this page.');
+            return;
+        }
+        setWalletBusy(true);
+        setWalletMessage('');
+        try {
+            const state = await connectWallet();
+            setWalletAddress(state.address);
+            if (state.address && state.signer) {
+                try {
+                    const account = await signInWithWallet(state.address, state.signer);
+                    onWalletConnected(state.address, account);
+                    setWalletMessage('Wallet connected and signed in. The signature did not send a transaction.');
+                } catch {
+                    onWalletConnected(state.address);
+                    setWalletMessage('Wallet connected. Start the marketplace API to sign in across sessions.');
+                }
+            }
+        } catch (error) {
+            setWalletMessage(error instanceof Error ? error.message : 'Wallet connection failed.');
+        } finally {
+            setWalletBusy(false);
+        }
+    };
+
+    const nav = (view: string) => {
+        onNavigate(view);
+        setMobileOpen(false);
+    };
 
     return (
-        <header className="fixed left-0 right-0 top-0 z-50 zayq-glass-nav">
-            <div className="mx-auto flex h-[68px] max-w-[1440px] items-center justify-between gap-3 px-4 sm:px-8 lg:px-12">
-                <button onClick={() => onNavigate('landing')} className="flex shrink-0 items-center gap-2.5 text-left">
-                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#3D1A12] text-[#F7F4F2]"><Shield size={22} /></span>
-                    <span>
-                        <span className="block font-display text-[17px] font-bold leading-none tracking-[0.02em] text-[#3D1A12]">ZAYQ</span>
-                        <span className="mt-1 block text-[8px] font-semibold uppercase tracking-[0.15em] text-[#8C6D58]">Product Passport</span>
-                    </span>
-                </button>
+        <header className="market-nav fixed inset-x-0 top-0 z-50">
+            <div className="market-nav-main">
+                <div className="market-nav-inner">
+                    <button onClick={() => nav('marketplace')} className="market-brand" aria-label="Product Passport home">
+                        <span className="market-brand-icon"><Shield size={23} /></span>
+                        <span className="market-brand-copy"><strong>PASSPORT<span className="market-brand-mst">MST</span></strong><small>BUY • SELL • VERIFY</small></span>
+                    </button>
 
-                <form onSubmit={handleSearchSubmit} className="relative hidden max-w-[250px] flex-1 md:flex">
-                    <input type="text" placeholder="Passport ID" value={passportSearch} onChange={(event) => setPassportSearch(event.target.value)} className="w-full border-b border-[#C9BDB5] bg-transparent py-2 pl-7 pr-2 text-xs text-[#1A1A1A] outline-none transition-colors placeholder:text-[#A0958C] focus:border-[#3D1A12]" />
-                    <Search size={14} className="absolute left-0 top-2.5 text-[#8C6D58]" />
+                    <form onSubmit={handleSearchSubmit} className="market-search hidden md:flex" role="search">
+                        <select aria-label="Search category" defaultValue="all"><option value="all">All</option><option value="laptops">Laptops</option><option value="phones">Phones</option></select>
+                        <input aria-label="Search products or passport ID" value={passportSearch} onChange={event => setPassportSearch(event.target.value)} placeholder="Search products, brands, or passport ID" />
+                        <button type="submit" aria-label="Search"><Search size={21} /></button>
+                    </form>
+
+                    <nav className="market-nav-actions" aria-label="Main navigation">
+                        <button onClick={handleWallet} disabled={walletBusy} className="market-wallet" title={walletMessage || 'Connect a wallet to submit real MST Testnet transactions'}>
+                            <Wallet size={16} /><span>{walletBusy ? 'Connecting' : walletAddress ? `${walletAddress.slice(0, 5)}…${walletAddress.slice(-4)}` : 'Wallet'}</span>
+                        </button>
+                        <button onClick={() => nav('dashboard')} className="market-nav-link"><span className="market-nav-overline">Hello, {currentUser.name.split(' ')[0]}</span><strong>My products</strong><ChevronDown size={13} /></button>
+                        <button onClick={handleSell} className="market-nav-link market-sell"><Tag size={16} /><strong>Sell</strong></button>
+                        <button onClick={onOpenSaralModal} className="market-account" aria-label="Open profile"><UserIcon size={20} /><span>Account</span></button>
+                        <button onClick={() => setMobileOpen(open => !open)} className="market-mobile-toggle" aria-label={mobileOpen ? 'Close menu' : 'Open menu'}>{mobileOpen ? <X size={20} /> : <Menu size={20} />}</button>
+                    </nav>
+                </div>
+                <form onSubmit={handleSearchSubmit} className="market-search market-search-mobile md:hidden" role="search">
+                    <input aria-label="Search products or passport ID" value={passportSearch} onChange={event => setPassportSearch(event.target.value)} placeholder="Search products or passport ID" />
+                    <button type="submit" aria-label="Search"><Search size={20} /></button>
                 </form>
-
-                <nav className="flex items-center gap-2 sm:gap-4">
-                    <div className="hidden items-center gap-5 lg:flex">
-                        {navItems.map(({ label, view, icon: Icon }) => (
-                            <button key={view} onClick={() => onNavigate(view)} className={`inline-flex items-center gap-1.5 py-2 text-[10px] font-semibold uppercase tracking-[0.1em] transition-colors ${currentView === view ? 'text-[#3D1A12]' : 'text-[#8C6D58] hover:text-[#3D1A12]'}`}>
-                                <Icon size={14} /> {label}
-                            </button>
-                        ))}
-                    </div>
-                    <button onClick={() => onNavigate('create-passport')} className="zayq-btn-primary h-10 px-3 shadow-md sm:px-4">
-                        <PlusCircle size={14} /><span className="hidden sm:inline">Create passport</span><span className="sm:hidden">Create</span>
-                    </button>
-                    <button onClick={() => onNavigate('service-portal')} className={`grid h-9 w-9 place-items-center rounded-lg transition-colors ${currentView === 'service-portal' ? 'bg-[#3D1A12]/10 text-[#3D1A12]' : 'text-[#8C6D58] hover:bg-[#FAF8F5] hover:text-[#3D1A12]'}`} title="Service Center Portal"><Wrench size={15} /></button>
-                    <button onClick={() => onNavigate('admin-console')} className={`hidden h-9 w-9 place-items-center rounded-lg transition-colors sm:grid ${currentView === 'admin-console' || currentView === 'stolen-dispute' ? 'bg-rose-100 text-rose-800' : 'text-[#8C6D58] hover:bg-[#FAF8F5] hover:text-[#3D1A12]'}`} title="Admin & Dispute Console"><AlertOctagon size={15} /></button>
-                    <button onClick={onOpenSaralModal} title={`Signed in as ${currentUser.name}`} className="ml-1 grid h-9 w-9 place-items-center border-l border-[#E5DFD9] pl-2 text-xs font-bold text-[#3D1A12]">
-                        <span className="grid h-7 w-7 place-items-center rounded-full bg-[#3D1A12] text-[#F7F4F2]">{currentUser.name.charAt(0)}</span>
-                    </button>
-                </nav>
             </div>
+
+            <div className="market-nav-sub">
+                <div className="market-nav-sub-inner">
+                    <button onClick={() => setMobileOpen(open => !open)} className="market-all"><Menu size={17} /><strong>All</strong></button>
+                    <button onClick={() => nav('marketplace')}>Marketplace</button>
+                    <button onClick={() => nav('marketplace')}>Electronics</button>
+                    <button onClick={() => nav('dashboard')}>Your products</button>
+                    <button onClick={handleSell}>Sell on Passport</button>
+                    {currentUser.role === 'SERVICE_CENTER' && <button onClick={() => nav('service-portal')}><Wrench size={14} /> Service center</button>}
+                    {currentUser.role === 'ADMIN' && <button onClick={() => nav('admin-console')}><AlertOctagon size={14} /> Admin</button>}
+                    <span className="market-nav-caption"><ShoppingBag size={14} /> Product history travels with every sale</span>
+                </div>
+            </div>
+
+            {mobileOpen && <div className="market-mobile-menu">
+                <button onClick={() => nav('marketplace')}>Browse marketplace</button>
+                <button onClick={() => nav('dashboard')}>My products</button>
+                <button onClick={handleSell}>Sell a product</button>
+                <button onClick={onOpenSaralModal}>Switch account</button>
+                <button onClick={handleWallet}>{walletAddress ? 'Disconnect wallet' : 'Connect MST wallet'}</button>
+                {currentUser.role === 'SERVICE_CENTER' && <button onClick={() => nav('service-portal')}>Service center</button>}
+                {currentUser.role === 'ADMIN' && <button onClick={() => nav('admin-console')}>Admin console</button>}
+            </div>}
+            {walletMessage && <div role="status" className="market-wallet-message">{walletMessage}</div>}
         </header>
     );
 };

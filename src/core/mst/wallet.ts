@@ -2,8 +2,9 @@ import { ethers } from 'ethers';
 
 // MST Testnet Configuration
 const MST_TESTNET_CONFIG = {
-    chainId: 4545,
-    chainIdHex: '0x11C1',
+    // MST Testnet network registry: https://chainid.network/chain/91562037/
+    chainId: 91562037,
+    chainIdHex: '0x5752035',
     chainName: 'MST Testnet',
     rpcUrl: 'https://testnetrpc.mstblockchain.com',
     currencyName: 'tMSTC',
@@ -77,7 +78,7 @@ export async function switchToMSTTestnet(): Promise<void> {
 export async function connectWallet(): Promise<WalletState> {
     if (!isWalletAvailable()) {
         throw new Error(
-            'Bridgekey wallet not found. Install it from: https://chromewebstore.google.com/detail/bridgekey/bfjojdcfenehemjgjlepdjomkpginlkg'
+            'No EVM wallet was found. Install BridgeKey or another EVM wallet, then try again.'
         );
     }
 
@@ -94,6 +95,9 @@ export async function connectWallet(): Promise<WalletState> {
     const provider = new ethers.BrowserProvider(ethereum);
     const signer = await provider.getSigner();
     const network = await provider.getNetwork();
+    if (Number(network.chainId) !== MST_TESTNET_CONFIG.chainId) {
+        throw new Error(`Wallet is connected to chain ${network.chainId}; MST Testnet (${MST_TESTNET_CONFIG.chainId}) is required.`);
+    }
 
     walletState = {
         connected: true,

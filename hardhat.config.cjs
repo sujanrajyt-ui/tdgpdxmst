@@ -7,12 +7,7 @@ module.exports = {
     networks: {
         testnet: {
             url: "https://testnetrpc.mstblockchain.com",
-            chainId: 4545,
-            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-        },
-        mainnet: {
-            url: "https://mariorpc.mstblockchain.com",
-            chainId: 4646,
+            chainId: 91562037,
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
         },
     },

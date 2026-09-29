@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User, ProductPassport, MarketplaceListing } from '../types';
 import { AppStore } from '../core/store';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { StatusBadge } from '../components/StatusBadge';
 import { PlusCircle, Shield, Store, ArrowRightLeft, AlertOctagon, KeyRound } from 'lucide-react';
+import { applyToSell } from '../core/api';
 
 interface Props {
     currentUser: User;
@@ -11,10 +12,14 @@ interface Props {
 }
 
 export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) => {
+    const [businessName, setBusinessName] = useState('');
+    const [sellerMessage, setSellerMessage] = useState('');
+    const [sellerBusy, setSellerBusy] = useState(false);
+    const [applicationPending, setApplicationPending] = useState(currentUser.sellerStatus === 'PENDING');
     const passports = AppStore.getPassports().filter(p => p.currentOwnerId === currentUser.id);
     const listings = AppStore.getListings().filter(l => l.sellerId === currentUser.id);
     const pendingTransfers = AppStore.getListings().filter(
-        l => (l.sellerId === currentUser.id || l.status === 'PENDING_TRANSFER') && l.status === 'PENDING_TRANSFER'
+        l => (l.sellerId === currentUser.id || l.buyerId === currentUser.id) && l.status === 'PENDING_TRANSFER'
     );
 
     return (
@@ -47,6 +52,26 @@ export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) 
                 </div>
             </div>
 
+            {currentUser.role === 'CONSUMER' && currentUser.walletAddress && currentUser.sellerStatus !== 'APPROVED' && <section className="zayq-glass-card rounded-2xl p-5 space-y-3">
+                <div className="flex items-center gap-2"><Store size={18} className="text-cyan-700" /><h2 className="font-bold">Seller account</h2></div>
+                {applicationPending || currentUser.sellerStatus === 'PENDING' ? <p className="text-sm text-slate-600">Your seller application is waiting for admin review.</p> : <form className="flex flex-col sm:flex-row gap-3" onSubmit={async event => {
+                    event.preventDefault();
+                    setSellerMessage('');
+                    setSellerBusy(true);
+                    try {
+                        await applyToSell(businessName.trim() || 'Individual seller');
+                        setApplicationPending(true);
+                        setSellerMessage('Application submitted. An admin must approve the seller account before listings go live.');
+                    } catch (error) {
+                        setSellerMessage(error instanceof Error ? error.message : 'Could not submit the application. Sign in to the marketplace API first.');
+                    } finally { setSellerBusy(false); }
+                }}>
+                    <label className="flex-1 text-sm">Business name <span className="text-slate-500">(optional for individual sellers)</span><input className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2" value={businessName} onChange={event => setBusinessName(event.target.value)} maxLength={120} placeholder="Your shop or seller name" /></label>
+                    <button disabled={sellerBusy} className="zayq-btn-primary self-end">{sellerBusy ? 'Sending…' : 'Apply to sell'}</button>
+                </form>}
+                {sellerMessage && <p role="status" className="text-sm text-slate-600">{sellerMessage}</p>}
+            </section>}
+
             {/* Pending Escrow Transfer Action Banner */}
             {pendingTransfers.length > 0 && (
                 <div className="bg-gradient-to-r from-purple-950/80 to-slate-900 border-2 border-purple-500/50 rounded-2xl p-5 shadow-[0_0_20px_rgba(168,85,247,0.2)] flex items-center justify-between gap-4">
@@ -75,7 +100,7 @@ export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) 
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-bold text-white font-sans flex items-center gap-2">
                         <Shield size={18} className="text-cyan-400" />
-                        <span>My Registered Product Passports ({passports.length})</span>
+                        <span>My Product Passports ({passports.length})</span>
                     </h2>
                 </div>
 
@@ -117,9 +142,15 @@ export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) 
                                         <StatusBadge status={p.currentStatus} size="sm" />
                                     </div>
 
-                                    <div className="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800/80">
-                                        <span>Services: {p.serviceRecords.length}</span>
-                                        <span className="text-cyan-400 group-hover:underline">Open Passport →</span>
+                                    <div className="flex items-center justify-between gap-2 text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-800/80">
+                                        <span>{p.ownershipHistory.length} owner record{p.ownershipHistory.length === 1 ? '' : 's'} · {p.serviceRecords.length} service record{p.serviceRecords.length === 1 ? '' : 's'}</span>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {['ACTIVE', 'RECOVERED'].includes(p.currentStatus) && !AppStore.getListings().some(listing => listing.passportId === p.passportId && ['PENDING_REVIEW', 'ACTIVE', 'PENDING_TRANSFER'].includes(listing.status)) && <button
+                                                onClick={event => { event.stopPropagation(); onNavigate('create-listing', p.passportId); }}
+                                                className="rounded-full bg-amber-100 px-2.5 py-1 font-sans text-[10px] font-bold text-amber-900 hover:bg-amber-200"
+                                            >List for sale</button>}
+                                            <span className="text-cyan-400 group-hover:underline">Open passport →</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -139,7 +170,7 @@ export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) 
                     <p className="text-xs text-slate-500 italic">No active listings created.</p>
                 ) : (
                     <div className="space-y-3">
-                        {listings.map((l) => (
+                                {listings.map((l) => (
                             <div key={l.id} className="zayq-glass-card rounded-xl p-4 flex items-center justify-between">
                                 <div>
                                     <h4 className="font-bold text-sm text-white">{l.title}</h4>
@@ -151,6 +182,14 @@ export const UserDashboardView: React.FC<Props> = ({ currentUser, onNavigate }) 
                                     <span className="text-xs px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-400 font-mono border border-cyan-500/30 font-bold">
                                         {l.status}
                                     </span>
+                                    {l.status === 'ACTIVE' && l.sellerId === currentUser.id && <button
+                                        onClick={async (event) => {
+                                            event.stopPropagation();
+                                            await AppStore.cancelListing(l.id, currentUser);
+                                            onNavigate('dashboard');
+                                        }}
+                                        className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs px-3 py-1.5 rounded-lg transition-colors"
+                                    >Cancel listing</button>}
                                     <button
                                         onClick={() => onNavigate('listing-detail', l.id)}
                                         className="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-1.5 rounded-lg transition-colors"

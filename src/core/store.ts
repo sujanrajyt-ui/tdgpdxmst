@@ -10,20 +10,31 @@ import {
     ProductStatus,
     ProductCategory
 } from '../types';
-import { MSTContractBridge, MST_CONTRACT_ADDRESSES } from './mst/contracts';
 import { MSTAnchorService } from './mst/anchorService';
 import { WASMifyBridge } from './mst/wasmify';
 import { VerificationEngine } from './verifiers/verificationEngine';
+import { id as keccak256 } from 'ethers';
+import { createListingRecord, createPassportRecord, getMyMarketplace, getPublicMarketplace } from './api';
 
 export const CURRENT_USER: User = {
     id: 'USR-18392',
     name: 'Arjun Mehta',
     email: 'arjun.mehta@example.com',
-    role: 'CONSUMER',
-    mstIdentityDid: 'did:mst:saral:0x77A793d2E4546DF90E11553832c657a3b2422C02',
+    role: 'SELLER',
+    mstIdentityDid: 'did:mst:saral:93821849',
     saralVerified: true,
     reputationScore: 98,
     avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'
+};
+
+export const DEMO_ADMIN: User = {
+    id: 'USR-ADMIN-001',
+    name: 'MST Marketplace Admin',
+    email: 'admin@passportmst.demo',
+    role: 'ADMIN',
+    mstIdentityDid: 'did:mst:identity:platform-admin-001',
+    saralVerified: true,
+    reputationScore: 100
 };
 
 export const DEMO_BUYER: User = {
@@ -381,7 +392,7 @@ const INITIAL_LISTINGS: MarketplaceListing[] = [
         currency: 'INR',
         location: 'Bangalore, KA',
         title: 'Apple MacBook Air M3 (15-inch, 16GB RAM) - Verifiable Mint Condition',
-        description: 'Selling my pristine MacBook Air M3. Identity and ownership verified, with full iCare replacement battery service history and TechCert 9.8/10 inspection score. AppleCare+ valid till 2028.',
+        description: 'Selling my pristine MacBook Air M3. Identity and ownership verified on MST blockchain with full iCare replacement battery service history and TechCert 9.8/10 inspection score. AppleCare+ valid till 2028.',
         status: 'ACTIVE',
         listedAt: '2026-09-20T12:00:00Z'
     },
@@ -395,7 +406,7 @@ const INITIAL_LISTINGS: MarketplaceListing[] = [
         price: 84500,
         currency: 'INR',
         location: 'Mumbai, MH',
-        title: 'iPhone 15 Pro Natural Titanium 128GB - Ownership Verified',
+        title: 'iPhone 15 Pro Natural Titanium 128GB - MST Verified Ownership',
         description: 'Clean phone, original box with matched IMEI attestation. Battery 93%. Transfer available instantly on Product Passport.',
         status: 'ACTIVE',
         listedAt: '2026-09-22T15:30:00Z'
@@ -418,43 +429,81 @@ const INITIAL_LISTINGS: MarketplaceListing[] = [
 ];
 
 export class AppStore {
-    private static passports: ProductPassport[] = AppStore.loadPassports();
-    private static listings: MarketplaceListing[] = AppStore.loadListings();
+    private static passports: ProductPassport[] = AppStore.readSaved('passport-marketplace-passports', INITIAL_PASSPORTS);
+    private static listings: MarketplaceListing[] = AppStore.readSaved('passport-marketplace-listings', INITIAL_LISTINGS);
 
-    private static loadPassports(): ProductPassport[] {
+    /** Merge shared API records into this browser's read cache; local demo records remain local. */
+    public static async syncFromApi(walletAddress?: string): Promise<void> {
         try {
-            const saved = localStorage.getItem('mst_passports');
-            if (saved) return JSON.parse(saved);
-        } catch (e) {
-            console.error('Failed to load passports from localStorage:', e);
+            const [publicData, privateData] = await Promise.all([
+                getPublicMarketplace(),
+                walletAddress ? getMyMarketplace().catch(() => ({ passports: [], listings: [] })) : Promise.resolve({ passports: [], listings: [] }),
+            ]);
+            const passports = new Map<string, ProductPassport>(this.passports.map(passport => [passport.passportId, passport]));
+            [...publicData.passports, ...privateData.passports].forEach(passport => {
+                const local = passports.get(passport.passportId);
+                passports.set(passport.passportId, local ? {
+                    ...local, ...passport,
+                    ownershipHistory: local.ownershipHistory.length ? local.ownershipHistory : passport.ownershipHistory,
+                    attestations: local.attestations.length ? local.attestations : passport.attestations,
+                    serviceRecords: local.serviceRecords.length ? local.serviceRecords : passport.serviceRecords,
+                    inspectionRecords: local.inspectionRecords.length ? local.inspectionRecords : passport.inspectionRecords,
+                    lifecycleHistory: local.lifecycleHistory.length ? local.lifecycleHistory : passport.lifecycleHistory,
+                    disputes: local.disputes.length ? local.disputes : passport.disputes,
+                } : passport);
+            });
+            const listings = new Map<string, MarketplaceListing>(this.listings.map(listing => [listing.id, listing]));
+            [...publicData.listings, ...privateData.listings].forEach(listing => {
+                const local = listings.get(listing.id);
+                listings.set(listing.id, local ? { ...local, ...listing } : listing);
+            });
+            this.passports = [...passports.values()];
+            this.listings = [...listings.values()];
+            this.save();
+        } catch {
+            // The app can still open in local-demo mode when the API has not been started.
         }
-        return [...INITIAL_PASSPORTS];
     }
 
-    private static loadListings(): MarketplaceListing[] {
+    private static readSaved<T>(key: string, fallback: T): T {
         try {
-            const saved = localStorage.getItem('mst_listings');
-            if (saved) return JSON.parse(saved);
-        } catch (e) {
-            console.error('Failed to load listings from localStorage:', e);
-        }
-        return [...INITIAL_LISTINGS];
-    }
-
-    public static saveState(): void {
-        try {
-            localStorage.setItem('mst_passports', JSON.stringify(this.passports));
-            localStorage.setItem('mst_listings', JSON.stringify(this.listings));
-        } catch (e) {
-            console.error('Failed to save to localStorage:', e);
+            const saved = localStorage.getItem(key);
+            return AppStore.stripSampleTransactionHashes(saved ? JSON.parse(saved) as T : fallback);
+        } catch {
+            return AppStore.stripSampleTransactionHashes(fallback);
         }
     }
 
-    public static clearStorage(): void {
-        localStorage.removeItem('mst_passports');
-        localStorage.removeItem('mst_listings');
-        this.passports = [...INITIAL_PASSPORTS];
-        this.listings = [...INITIAL_LISTINGS];
+    /** Remove old hard-coded sample hashes without touching genuine user transaction hashes. */
+    private static stripSampleTransactionHashes<T>(value: T): T {
+        const sampleHashes = new Set([
+            '0xa49f2b8c91d8e123f4567890abcdef1234567890abcdef1234567890abcdef12',
+            '0xb58e1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b',
+            '0xd78a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a',
+            '0xc67f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f',
+            '0xe89b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b',
+            '0xf123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        ]);
+        const clean = (item: unknown): void => {
+            if (Array.isArray(item)) item.forEach(clean);
+            else if (item && typeof item === 'object') {
+                Object.entries(item).forEach(([key, nested]) => {
+                    if (typeof nested === 'string' && sampleHashes.has(nested)) (item as Record<string, unknown>)[key] = '';
+                    else clean(nested);
+                });
+            }
+        };
+        clean(value);
+        return value;
+    }
+
+    private static save(): void {
+        try {
+            localStorage.setItem('passport-marketplace-passports', JSON.stringify(this.passports));
+            localStorage.setItem('passport-marketplace-listings', JSON.stringify(this.listings));
+        } catch (error) {
+            console.warn('Could not save marketplace demo data in this browser.', error);
+        }
     }
 
     public static getPassports(): ProductPassport[] {
@@ -492,12 +541,7 @@ export class AppStore {
         const rawId = data.serialNumber || data.imei || data.serviceTag || '';
 
         // Calculate hashed identifier
-        let hash = 0;
-        for (let i = 0; i < rawId.length; i++) {
-            hash = (hash << 5) - hash + rawId.charCodeAt(i);
-            hash |= 0;
-        }
-        const hashedIdentifier = `0x${Math.abs(hash).toString(16).padStart(32, '0')}`;
+        const hashedIdentifier = keccak256(rawId);
 
         const passportId = `PP-${Math.floor(80000 + Math.random() * 19999)}`;
         const now = new Date().toISOString();
@@ -604,8 +648,20 @@ export class AppStore {
             }
         };
 
+        if (data.currentUser.walletAddress) {
+            await createPassportRecord({
+                passportId,
+                category: data.category,
+                brand: data.brand,
+                model: data.model,
+                releaseYear: data.releaseYear,
+                imageUrl: newPassport.imageUrl,
+                identifierHash: hashedIdentifier,
+            });
+        }
+
         this.passports.unshift(newPassport);
-        this.saveState();
+        this.save();
         return { passport: newPassport, anchorTx: anchor.transactionHash };
     }
 
@@ -620,6 +676,12 @@ export class AppStore {
     ): Promise<MarketplaceListing> {
         const passport = this.getPassportById(passportId);
         if (!passport) throw new Error('Passport not found');
+        if (passport.currentOwnerId !== seller.id) throw new Error('Only the current passport owner can create a listing.');
+        if (passport.currentStatus === 'STOLEN' || passport.currentStatus === 'DISPUTED') throw new Error('This passport cannot be listed while it is under review.');
+        if (!Number.isFinite(price) || price <= 0) throw new Error('Enter a valid asking price.');
+        if (this.listings.some(item => item.passportId === passportId && ['PENDING_REVIEW', 'ACTIVE', 'PENDING_TRANSFER'].includes(item.status))) {
+            throw new Error('This passport already has an active listing.');
+        }
 
         const listingId = `LST-${Math.floor(10000 + Math.random() * 90000)}`;
         const now = new Date().toISOString();
@@ -640,6 +702,11 @@ export class AppStore {
             listedAt: now,
             escrowStatus: 'IDLE'
         };
+
+        if (seller.walletAddress) {
+            const sharedListing = await createListingRecord({ passportId, price, location, title, description });
+            Object.assign(listing, sharedListing);
+        }
 
         // Update passport status to FOR_SALE
         passport.currentStatus = 'FOR_SALE';
@@ -667,7 +734,7 @@ export class AppStore {
         });
 
         this.listings.unshift(listing);
-        this.saveState();
+        this.save();
         return listing;
     }
 
@@ -677,20 +744,50 @@ export class AppStore {
         if (!listing) throw new Error('Listing not found');
         const passport = this.getPassportById(listing.passportId);
         if (!passport) throw new Error('Passport not found');
+        if (listing.status !== 'ACTIVE') throw new Error('This listing is no longer available.');
+        if (listing.sellerId === buyer.id) throw new Error('You cannot buy your own listing.');
 
         const handoverSeller = Math.floor(100000 + Math.random() * 900000).toString();
         const handoverBuyer = Math.floor(100000 + Math.random() * 900000).toString();
 
         listing.status = 'PENDING_TRANSFER';
-        listing.escrowStatus = 'FUNDS_DEPOSITED';
+        listing.buyerId = buyer.id;
+        listing.escrowStatus = 'PURCHASE_STARTED';
         listing.handoverCodeSeller = handoverSeller;
         listing.handoverCodeBuyer = handoverBuyer;
 
         passport.currentStatus = 'TRANSFER_PENDING';
         passport.updatedAt = new Date().toISOString();
-        this.saveState();
+        this.save();
 
         return listing;
+    }
+
+    public static async cancelListing(listingId: string, seller: User): Promise<void> {
+        const listing = this.getListingById(listingId);
+        if (!listing) throw new Error('Listing not found');
+        if (listing.sellerId !== seller.id) throw new Error('Only the seller can cancel this listing.');
+        if (listing.status !== 'ACTIVE') throw new Error('Only active listings can be cancelled.');
+        const passport = this.getPassportById(listing.passportId);
+        if (!passport) throw new Error('Passport not found');
+
+        listing.status = 'CANCELLED';
+        passport.currentStatus = 'ACTIVE';
+        passport.updatedAt = new Date().toISOString();
+        const anchor = await MSTAnchorService.anchorEvent(passport.passportId, `EVT-CANCEL-${listing.id}`, 'MarketplaceRegistry', `0xCANCEL_${listing.id}`);
+        passport.lifecycleHistory.unshift({
+            id: `LFC-${Math.floor(1000 + Math.random() * 9000)}`,
+            passportId: passport.passportId,
+            eventType: 'CANCELLED',
+            title: 'Marketplace listing cancelled',
+            description: `Listing cancelled by ${seller.name}. The product passport remains active.`,
+            actorName: seller.name,
+            actorDid: seller.mstIdentityDid,
+            timestamp: passport.updatedAt,
+            mstTxHash: anchor.transactionHash,
+            blockNumber: anchor.blockNumber
+        });
+        this.save();
     }
 
     // 4. Complete Handover & Transfer Ownership on MST
@@ -702,6 +799,10 @@ export class AppStore {
         if (!listing) throw new Error('Listing not found');
         const passport = this.getPassportById(listing.passportId);
         if (!passport) throw new Error('Passport not found');
+        if (listing.status !== 'PENDING_TRANSFER' || listing.escrowStatus !== 'PURCHASE_STARTED') {
+            throw new Error('There is no pending purchase to complete.');
+        }
+        if (listing.buyerId !== buyer.id) throw new Error('Only the buyer on this purchase can receive the passport.');
 
         const previousOwnerName = passport.currentOwnerName;
         const now = new Date().toISOString();
@@ -754,6 +855,7 @@ export class AppStore {
         // Update Listing
         listing.status = 'SOLD';
         listing.escrowStatus = 'RELEASED';
+        this.save();
 
         return { passport, transferTx: anchor.transactionHash };
     }

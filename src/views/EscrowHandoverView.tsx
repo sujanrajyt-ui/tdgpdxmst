@@ -20,25 +20,36 @@ export const EscrowHandoverView: React.FC<Props> = ({
     const listing = AppStore.getListingById(listingId) || AppStore.getListings()[0];
     const passport = AppStore.getPassportById(listing.passportId);
 
-    const [sellerInputCode, setSellerInputCode] = useState(listing.handoverCodeSeller || '849201');
-    const [buyerInputCode, setBuyerInputCode] = useState(listing.handoverCodeBuyer || '392018');
+    const [sellerInputCode, setSellerInputCode] = useState('');
+    const [buyerInputCode, setBuyerInputCode] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [handoverError, setHandoverError] = useState('');
     const [transferSuccess, setTransferSuccess] = useState<{ passportId: string; txHash: string } | null>(null);
 
     if (!passport) return null;
 
     const handleConfirmHandover = async (e: React.FormEvent) => {
         e.preventDefault();
+        setHandoverError('');
+        if (listing.status !== 'PENDING_TRANSFER' || currentUser.id !== listing.buyerId) {
+            setHandoverError('Only the buyer on this pending purchase can confirm the handover.');
+            return;
+        }
+        if (sellerInputCode !== listing.handoverCodeSeller || buyerInputCode !== listing.handoverCodeBuyer) {
+            setHandoverError('Those handover codes do not match. Check both codes with the buyer and seller.');
+            return;
+        }
         setIsSubmitting(true);
 
         // Execute Smart Contract Ownership Transfer
-        const { passport: updatedPassport, transferTx } = await AppStore.executeOwnershipTransfer(listing.id, currentUser);
-        setIsSubmitting(false);
-
-        setTransferSuccess({
-            passportId: updatedPassport.passportId,
-            txHash: transferTx
-        });
+        try {
+            const { passport: updatedPassport, transferTx } = await AppStore.executeOwnershipTransfer(listing.id, currentUser);
+            setTransferSuccess({ passportId: updatedPassport.passportId, txHash: transferTx });
+        } catch (error) {
+            setHandoverError(error instanceof Error ? error.message : 'The handover could not be confirmed.');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -47,11 +58,11 @@ export const EscrowHandoverView: React.FC<Props> = ({
             <div className="text-center space-y-2">
                 <ZayqEyebrow tone="purple">
                     <ArrowRightLeft size={14} />
-                    MST OwnershipRegistry.completeTransfer
+                    Product passport ownership handover
                 </ZayqEyebrow>
                 <h1 className="text-2xl font-extrabold text-white font-sans">Physical Handover & Dual Confirmation</h1>
                 <p className="text-xs text-slate-400 font-mono">
-                    Escrow funds deposited for Passport <strong className="text-cyan-300">{passport.passportId}</strong>
+                    Purchase started for Passport <strong className="text-cyan-300">{passport.passportId}</strong>
                 </p>
             </div>
 
@@ -62,10 +73,8 @@ export const EscrowHandoverView: React.FC<Props> = ({
                     </div>
 
                     <div className="space-y-2">
-                        <h2 className="text-2xl font-extrabold text-white font-sans">Ownership Transferred Successfully!</h2>
-                        <p className="text-xs text-slate-300 font-mono">
-                            MST Smart Contract <span className="text-cyan-300 font-bold">OwnershipRegistry</span> confirmed transaction receipt.
-                        </p>
+                        <h2 className="text-2xl font-extrabold text-white font-sans">{transferSuccess.txHash ? 'Ownership transfer confirmed on MST' : 'Demo handover saved in this browser'}</h2>
+                        <p className="text-xs text-slate-300">{transferSuccess.txHash ? 'The passport owner changed on-chain and its ownership history stays attached.' : 'This demo updates only this browser. It did not transfer money or change on-chain ownership.'}</p>
                     </div>
 
                     <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 text-left text-xs font-mono space-y-2">
@@ -78,14 +87,8 @@ export const EscrowHandoverView: React.FC<Props> = ({
                             <span className="text-emerald-400 font-bold">{currentUser.name} (Owner #2)</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-slate-500">MST Block Transaction:</span>
-                            <button
-                                onClick={() => onOpenMSTExplorer(transferSuccess.txHash)}
-                                className="text-cyan-400 hover:underline flex items-center gap-1"
-                            >
-                                <span>{transferSuccess.txHash.slice(0, 16)}...</span>
-                                <ExternalLink size={12} />
-                            </button>
+                            <span className="text-slate-500">{transferSuccess.txHash ? 'MST transaction:' : 'Network status:'}</span>
+                            {transferSuccess.txHash ? <button onClick={() => onOpenMSTExplorer(transferSuccess.txHash)} className="text-cyan-400 hover:underline flex items-center gap-1"><span>{transferSuccess.txHash.slice(0, 16)}...</span><ExternalLink size={12} /></button> : <span className="text-amber-700 font-semibold">Local demo only</span>}
                         </div>
                     </div>
 
@@ -116,9 +119,20 @@ export const EscrowHandoverView: React.FC<Props> = ({
                             <Lock size={14} />
                             <span>Dual Handover Verification Rules</span>
                         </div>
-                        <p>Both Seller and Buyer provide secret handover pins at physical exchange. Handover releases escrow and executes MST smart contract ownership transition.</p>
+                        <p>Confirm both handover codes after meeting. In this demo the update is saved locally; it does not transfer money or submit a blockchain transaction unless a configured wallet and contract are available.</p>
                     </div>
 
+                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-300">
+                        <p className="font-semibold text-white">Share your handover code at the in-person exchange</p>
+                        {currentUser.id === listing.buyerId ? (
+                            <p className="mt-2">Your buyer code: <strong className="font-mono text-emerald-300">{listing.handoverCodeBuyer}</strong>. Give this to the seller, then enter the seller’s code below.</p>
+                        ) : currentUser.id === listing.sellerId ? (
+                            <p className="mt-2">Seller code: <strong className="font-mono text-cyan-300">{listing.handoverCodeSeller}</strong>. Share this with the buyer at handover.</p>
+                        ) : <p className="mt-2">Switch to the buyer or seller account to view its handover code.</p>}
+                    </div>
+
+                    {currentUser.id !== listing.buyerId && <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-200">The buyer completes the handover. Switch to the buyer identity to continue.</p>}
+                    {handoverError && <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{handoverError}</p>}
                     {/* Dual Code Inputs */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-2">
@@ -148,15 +162,15 @@ export const EscrowHandoverView: React.FC<Props> = ({
 
                     <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || currentUser.id !== listing.buyerId}
                         className="w-full bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold py-3 rounded-xl text-xs transition-all shadow-lg shadow-purple-900/30 flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {isSubmitting ? (
-                            <span>Submitting MST OwnershipRegistry.completeTransfer...</span>
+                            <span>Saving passport ownership handover...</span>
                         ) : (
                             <>
                                 <ArrowRightLeft size={16} />
-                                <span>Confirm Handover & Release Escrow on MST</span>
+                        <span>Confirm handover and update passport</span>
                             </>
                         )}
                     </button>
