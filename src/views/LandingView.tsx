@@ -1,26 +1,18 @@
-import React, { useState } from 'react';
+import React, { Suspense, useState } from 'react';
 import { ArrowRight, Search, ShieldCheck, Tag } from 'lucide-react';
 import { AppStore } from '../core/store';
 import { ProductCardZayq } from '../components/ProductCardZayq';
+
+const ReloreProductScene3D = React.lazy(() => import('../components/ReloreProductScene3D'));
 
 interface Props { onNavigate: (view: string, param?: string) => void; }
 
 export const LandingView: React.FC<Props> = ({ onNavigate }) => {
     const [passportId, setPassportId] = useState('');
-    const [productTilt, setProductTilt] = useState({ x: 0, y: 0 });
     const passports = new Map(AppStore.getPassports().map(passport => [passport.passportId, passport]));
     const featured = AppStore.getListings().filter(listing => listing.status === 'ACTIVE').slice(0, 3);
     const heroListing = featured[0];
     const heroPassport = heroListing ? passports.get(heroListing.passportId) : undefined;
-
-    const handleProductTilt = (event: React.PointerEvent<HTMLButtonElement>) => {
-        if (event.pointerType === 'touch') return;
-        const bounds = event.currentTarget.getBoundingClientRect();
-        setProductTilt({
-            x: ((event.clientY - bounds.top) / bounds.height - 0.5) * -8,
-            y: ((event.clientX - bounds.left) / bounds.width - 0.5) * 12,
-        });
-    };
 
     const handleVerify = (event: React.FormEvent) => {
         event.preventDefault();
@@ -41,26 +33,21 @@ export const LandingView: React.FC<Props> = ({ onNavigate }) => {
                     </div>
                 </div>
                 {heroListing && heroPassport && <div className="shop-home-showcase">
-                    <button
-                        type="button"
-                        className="shop-home-product-stage"
-                        onClick={() => onNavigate('listing-detail', heroListing.id)}
-                        onPointerMove={handleProductTilt}
-                        onPointerLeave={() => setProductTilt({ x: 0, y: 0 })}
-                        aria-label={`View featured ${heroListing.title}`}
-                    >
+                    <div className="shop-home-product-stage" aria-label={`Interactive 3D preview of a laptop. Featured listing: ${heroListing.title}`}>
                         <span className="shop-home-stage-glow" />
-                        <img
-                            src={heroPassport.imageUrl}
-                            alt={heroListing.title}
-                            style={{ transform: `rotateX(${productTilt.x}deg) rotateY(${productTilt.y}deg)` }}
-                        />
+                        <Suspense fallback={<div className="shop-home-stage-loading">Loading 3D product…</div>}>
+                            <ReloreProductScene3D />
+                        </Suspense>
                         <span className="shop-home-stage-passport"><ShieldCheck size={14} /> Passport included</span>
-                    </button>
+                    </div>
                     <div className="shop-home-showcase-caption">
                         <span>FEATURED DEVICE · {heroPassport.brand}</span>
                         <strong>{heroPassport.model}</strong>
-                        <button type="button" onClick={() => onNavigate('passport-detail', heroPassport.passportId)}>View product passport <ArrowRight size={14} /></button>
+                        <div className="shop-home-showcase-links">
+                            <button type="button" onClick={() => onNavigate('listing-detail', heroListing.id)}>View listing <ArrowRight size={14} /></button>
+                            <button type="button" onClick={() => onNavigate('passport-detail', heroPassport.passportId)}>View passport <ArrowRight size={14} /></button>
+                        </div>
+                        <span className="shop-home-drag-tip">Drag over the model to rotate it</span>
                     </div>
                 </div>}
             </section>
