@@ -9,7 +9,7 @@ import { formatPrice, products as previewProducts, type Product } from "@/lib/re
 import { toReloreProducts } from "@/core/relore-mapping";
 import { createListingRecord, createPassportRecord, getAdminReviewQueue, getMyMarketplace, getPublicMarketplace, getWalletSession, reviewListing, reviewSeller, signInWithWallet, signOutFromApi, updateProfile, type AdminReviewQueue, type ApiUser } from "@/core/api";
 import type { MarketplaceListing, ProductPassport } from "@/types";
-import { connectWallet } from "@/core/mst/wallet";
+import { connectWallet, getWalletState } from "@/core/mst/wallet";
 import { MSTAnchorService } from "@/core/mst/anchorService";
 
 type Page = { kind: "home" } | { kind: "product" | "passport"; id: string } | { kind: "workspace"; section: "my-products" | "sell" | "account" } | { kind: "admin" } | { kind: "not-found" };
@@ -106,7 +106,7 @@ export function ReloreApp() {
     if (!user) throw new Error("Connect and sign in with your MST wallet first.");
     setBusy(true); setActionMessage("");
     try {
-      const wallet = await connectWallet();
+      const wallet = getWalletState();
       if (!wallet.address || !wallet.signer || wallet.chainId !== 91562037) {
         throw new Error("Connect BridgeKey to MST Testnet before creating an on-chain passport.");
       }
@@ -116,7 +116,9 @@ export function ReloreApp() {
       const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(draft.identifier.trim().toUpperCase()));
       const identifierHash = "0x" + Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
       const passportId = `PP-${crypto.randomUUID().split("-")[0].toUpperCase()}`;
-      const chain = await MSTAnchorService.registerPassportAndOwnership(passportId, identifierHash);
+      setActionMessage("Confirm transaction 1 of 4 in BridgeKey: register the product passport.");
+      const chain = await MSTAnchorService.registerPassportAndOwnership(passportId, identifierHash, setActionMessage);
+      setActionMessage("Passport transactions confirmed. Saving the product record…");
       const passport = await createPassportRecord({
         passportId,
         category: draft.category,
@@ -128,7 +130,9 @@ export function ReloreApp() {
         ...chain,
       });
       const listingPayloadHash = "0x" + Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify({ passportId, title: draft.title, price: draft.price, location: draft.location })))), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      setActionMessage("Confirm transaction 4 of 4 in BridgeKey: publish the marketplace listing.");
       const listingAnchor = await MSTAnchorService.anchorEvent(passportId, "LISTING_SUBMITTED", "LifecycleRegistry", listingPayloadHash);
+      setActionMessage("All 4 MST transactions confirmed. Saving your live listing…");
       const listing = await createListingRecord({
         passportId: passport.passportId,
         title: draft.title,
@@ -142,6 +146,9 @@ export function ReloreApp() {
       await refreshPrivate(user);
       setMyPassports((current) => [passport, ...current.filter((item) => item.passportId !== passport.passportId)]);
       setMyListings((current) => [listing, ...current.filter((item) => item.id !== listing.id)]);
+    } catch (error) {
+      setActionMessage("");
+      throw error;
     } finally { setBusy(false); }
   };
 

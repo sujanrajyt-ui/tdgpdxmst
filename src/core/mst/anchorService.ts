@@ -40,8 +40,8 @@ export class MSTAnchorService {
         return anchor;
     }
 
-    /** Register a new passport and its initial owner in two real, wallet-approved MST transactions. */
-    public static async registerPassportAndOwnership(passportId: string, identifierHash: string): Promise<{ passportTxHash: string; ownershipTxHash: string; attestationTxHash: string }> {
+    /** Register a passport, its initial owner, and seller claim as real wallet-approved MST transactions. */
+    public static async registerPassportAndOwnership(passportId: string, identifierHash: string, onProgress?: (message: string) => void): Promise<{ passportTxHash: string; ownershipTxHash: string; attestationTxHash: string }> {
         const wallet = getWalletState();
         if (!wallet.connected || !wallet.signer || wallet.chainId !== 91562037) {
             throw new Error('Connect BridgeKey to MST Testnet before creating an on-chain passport.');
@@ -49,18 +49,21 @@ export class MSTAnchorService {
         if (!ethers.isHexString(identifierHash, 32)) throw new Error('The product identifier hash must be 32 bytes.');
         const passport = getContract('ProductPassportRegistry', true);
         if (await passport.passportExists(passportId)) throw new Error(`Passport ${passportId} is already registered on MST.`);
+        onProgress?.('Confirm transaction 1 of 4 in BridgeKey: register the product passport.');
         const passportTx = await passport.registerPassport(passportId, identifierHash);
         const passportReceipt = await passportTx.wait();
         if (!passportReceipt || passportReceipt.status !== 1) throw new Error('MST did not confirm passport registration.');
         this.saveConfirmedAnchor(passportId, 'PASSPORT_REGISTERED', 'ProductPassportRegistry', MST_CONTRACT_ADDRESSES.ProductPassportRegistry, passportReceipt.hash, passportReceipt.blockNumber, identifierHash);
 
         const ownership = getContract('OwnershipRegistry', true);
+        onProgress?.('Passport confirmed. Confirm transaction 2 of 4 in BridgeKey: register initial ownership.');
         const ownershipTx = await ownership.registerOwnership(passportId);
         const ownershipReceipt = await ownershipTx.wait();
         if (!ownershipReceipt || ownershipReceipt.status !== 1) throw new Error('Passport exists on MST, but initial ownership registration was not confirmed. Retry ownership registration before listing.');
         this.saveConfirmedAnchor(passportId, 'OWNERSHIP_REGISTERED', 'OwnershipRegistry', MST_CONTRACT_ADDRESSES.OwnershipRegistry, ownershipReceipt.hash, ownershipReceipt.blockNumber, identifierHash);
 
         const attestation = getContract('AttestationRegistry', true);
+        onProgress?.('Ownership confirmed. Confirm transaction 3 of 4 in BridgeKey: add the seller identity claim.');
         const attestationTx = await attestation.addAttestation(passportId, 'SELLER_REPORTED', identifierHash);
         const attestationReceipt = await attestationTx.wait();
         if (!attestationReceipt || attestationReceipt.status !== 1) throw new Error('Passport and ownership are on MST, but the seller-reported identity claim was not confirmed.');

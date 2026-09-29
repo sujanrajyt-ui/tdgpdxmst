@@ -1,8 +1,8 @@
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { formatPrice, type Product } from "@/lib/relore-market-data";
 import type { ApiUser } from "@/core/api";
 import type { MarketplaceListing, ProductCategory, ProductPassport } from "@/types";
-import { connectWallet } from "@/core/mst/wallet";
+import { connectWallet, getWalletState } from "@/core/mst/wallet";
 import { MSTAnchorService } from "@/core/mst/anchorService";
 
 type WorkspaceProps = {
@@ -53,11 +53,20 @@ function SellPage({ user, busy, message, onConnect, onPublish }: WorkspaceProps)
   const [walletReady, setWalletReady] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
   const [connectingWallet, setConnectingWallet] = useState(false);
+  useEffect(() => {
+    const wallet = getWalletState();
+    const connected = Boolean(user && wallet.connected && wallet.signer && wallet.chainId === 91562037 && wallet.address?.toLowerCase() === user.walletAddress.toLowerCase());
+    setWalletReady(connected);
+    setWalletAddress(connected ? wallet.address || "" : "");
+  }, [user]);
   const connectBridgeKey = async () => {
     if (!user) return;
     setConnectingWallet(true); setError("");
     try {
-      const wallet = await connectWallet();
+      let wallet = getWalletState();
+      if (!wallet.connected || !wallet.signer || wallet.chainId !== 91562037 || wallet.address?.toLowerCase() !== user.walletAddress.toLowerCase()) {
+        wallet = await connectWallet();
+      }
       if (!wallet.address || !wallet.signer || wallet.chainId !== 91562037) throw new Error("Connect BridgeKey to MST Testnet to continue.");
       if (wallet.address.toLowerCase() !== user.walletAddress.toLowerCase()) throw new Error(`BridgeKey account ${wallet.address} does not match your signed-in account ${user.walletAddress}. Sign in with the connected account.`);
       setWalletAddress(wallet.address);
@@ -76,14 +85,14 @@ function SellPage({ user, busy, message, onConnect, onPublish }: WorkspaceProps)
     <section className="mx-auto max-w-3xl pb-24">
       <div className="meta">RELORE · SELLER WORKSPACE</div>
       <h1 className="editorial mt-4 text-5xl text-foreground sm:text-7xl">Sell an object.</h1>
-      <p className="meta mt-5 max-w-xl leading-relaxed">Connect BridgeKey to MST Testnet before creating an on-chain passport. Your wallet will ask you to approve each transaction.</p>
+      <p className="meta mt-5 max-w-xl leading-relaxed">Sign in with BridgeKey on MST Testnet. Signing in is free; four MST transactions start only after you submit the completed product form.</p>
       {!user ? <ConnectCard onConnect={onConnect} /> : (
         <form onSubmit={submitListing} className="mt-12 space-y-7 border-t border-border pt-8">
           <h2 className="meta text-foreground">Product details · Seller access is automatic</h2>
           <div className="border border-border bg-surface/50 p-5">
             <p className="meta text-foreground">Step 1 · Connect BridgeKey to MST Testnet</p>
             <p className="meta mt-2 normal-case tracking-normal">The product passport is created only after the correct wallet is connected and confirms the MST transactions.</p>
-            <button type="button" disabled={connectingWallet || busy} onClick={() => void connectBridgeKey()} className="meta mt-4 border border-primary px-5 py-3 text-primary disabled:opacity-60">{connectingWallet ? "Connecting…" : walletReady ? `Connected · ${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)} · MST Testnet` : "Connect BridgeKey"}</button>
+            {walletReady ? <p className="meta mt-4 text-primary">Connected · {walletAddress.slice(0, 6)}…{walletAddress.slice(-4)} · MST Testnet</p> : <button type="button" disabled={connectingWallet || busy} onClick={() => void connectBridgeKey()} className="meta mt-4 border border-primary px-5 py-3 text-primary disabled:opacity-60">{connectingWallet ? "Connecting…" : "Connect BridgeKey"}</button>}
           </div>
           <Field label="Product type"><select value={category} onChange={(e) => setCategory(e.target.value as ProductCategory)}><option value="LAPTOP">Laptop</option><option value="SMARTPHONE">Phone</option><option value="CAMERA">Camera</option><option value="FURNITURE">Furniture</option><option value="OTHER">Other object</option></select></Field>
           <div className="grid gap-6 sm:grid-cols-2"><Field label="Brand"><input required value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={80} /></Field><Field label="Release year"><input type="number" min="1970" max={new Date().getFullYear() + 1} value={releaseYear} onChange={(e) => setReleaseYear(Number(e.target.value))} required /></Field></div>
@@ -99,7 +108,6 @@ function SellPage({ user, busy, message, onConnect, onPublish }: WorkspaceProps)
         </form>
       )}
       {message && <p role="status" className="meta mt-6">{message}</p>}
-      {error && user && <p role="alert" className="meta mt-6 text-unverified">{error}</p>}
     </section>
   );
 }
@@ -151,7 +159,7 @@ function AccountPage({ user, onConnect, onSaveName, onSignOut, busy, message }: 
 }
 
 function ConnectCard({ onConnect }: { onConnect: () => void }) {
-  return <div className="mt-12 border-t border-border pt-8"><p className="meta max-w-lg leading-relaxed">Connect BridgeKey on MST Testnet to sign in. You’ll approve the passport transactions in your wallet before the product is created.</p><button type="button" onClick={onConnect} className="meta mt-6 bg-primary px-6 py-4 text-primary-foreground">Connect BridgeKey · MST Testnet</button></div>;
+  return <div className="mt-12 border-t border-border pt-8"><p className="meta max-w-lg leading-relaxed">Connect BridgeKey on MST Testnet to sign in. Signing in does not send a blockchain transaction.</p><button type="button" onClick={onConnect} className="meta mt-6 bg-primary px-6 py-4 text-primary-foreground">Connect BridgeKey · MST Testnet</button></div>;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
