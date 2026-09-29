@@ -137,7 +137,7 @@ export function ReloreApp() {
         location: draft.location,
         mstTxHash: listingAnchor.transactionHash,
       });
-      setActionMessage(`Passport ${passport.passportId} saved on MST Testnet. Passport, ownership, seller claim, and listing transactions confirmed. Listing sent for admin review.`);
+      setActionMessage(`Passport ${passport.passportId} saved on MST Testnet. Passport, ownership, seller claim, and listing transactions confirmed. Your listing is live in the marketplace.`);
       await refreshCatalog();
       await refreshPrivate(user);
       setMyPassports((current) => [passport, ...current.filter((item) => item.passportId !== passport.passportId)]);

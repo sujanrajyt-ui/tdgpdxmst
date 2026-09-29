@@ -100,6 +100,16 @@ db.prepare("UPDATE seller_applications SET status='APPROVED',reviewed_at=COALESC
 db.prepare("UPDATE users SET role=CASE WHEN role='ADMIN' THEN role ELSE 'SELLER' END, seller_status='APPROVED' WHERE seller_status!='APPROVED' OR role NOT IN ('ADMIN','SELLER')").run();
 
 const now = () => new Date().toISOString();
+// Publish existing listings that were waiting for the old manual review gate.
+const pendingListings = db.prepare("SELECT listing_id,payload_json FROM listings WHERE status='PENDING_REVIEW'").all();
+const publishPendingListing = db.prepare("UPDATE listings SET status='ACTIVE',payload_json=?,updated_at=? WHERE listing_id=?");
+for (const row of pendingListings) {
+  try {
+    const listing = JSON.parse(row.payload_json);
+    listing.status = 'ACTIVE';
+    publishPendingListing.run(JSON.stringify(listing), now(), row.listing_id);
+  } catch { /* Ignore malformed legacy rows; keep their records available for admin review. */ }
+}
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const admins = new Set((process.env.ADMIN_WALLETS || '').split(',').map(v => v.trim().toLowerCase()).filter(Boolean));
 const allowedOrigins = new Set((process.env.APP_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173').split(',').map(v => v.trim()).filter(Boolean));
@@ -348,11 +358,11 @@ const routes = async (req, res) => {
       sellerReputation: 0, sellerDid: `did:mst:wallet:${user.wallet_address.toLowerCase()}`,
       title: validateText(body.title, 'Title', 160), description: String(body.description || '').trim().slice(0, 4000),
       price, currency: 'TMSTC', location: validateText(body.location, 'Location', 120),
-      status: 'PENDING_REVIEW', listedAt: createdAt, createdAt,
+      status: 'ACTIVE', listedAt: createdAt, createdAt,
       mstTxHash: /^0x[0-9a-fA-F]{64}$/.test(String(body.mstTxHash || '')) ? body.mstTxHash : '',
     };
     db.prepare('INSERT INTO listings(listing_id,passport_id,seller_wallet,status,payload_json,created_at,updated_at) VALUES(?,?,?,?,?,?,?)').run(listingId, passportId, user.wallet_address, listing.status, JSON.stringify(listing), createdAt, createdAt);
-    audit(user, 'LISTING_SUBMITTED', listingId);
+    audit(user, 'LISTING_PUBLISHED', listingId);
     return send(res, 201, { listing });
   }
 

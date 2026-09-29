@@ -60,6 +60,7 @@ async function ready() {
     for (const statement of schema) await sql.query(statement, []);
     await sql.query("UPDATE seller_applications SET status='APPROVED',reviewed_at=COALESCE(reviewed_at,submitted_at) WHERE status='PENDING'", []);
     await sql.query("UPDATE users SET role=CASE WHEN role='ADMIN' THEN role ELSE 'SELLER' END,seller_status='APPROVED' WHERE seller_status!='APPROVED' OR role NOT IN ('ADMIN','SELLER')", []);
+    await sql.query("UPDATE listings SET status='ACTIVE',payload_json=payload_json || '{\"status\":\"ACTIVE\"}'::jsonb,updated_at=$1 WHERE status='PENDING_REVIEW'", [now()]);
   })();
   try { await schemaReady; } catch (error) { schemaReady = undefined; throw error; }
 }
@@ -305,11 +306,11 @@ async function route(req, res) {
       sellerName: user.display_name || `MST user ${user.wallet_address.slice(-4)}`, sellerReputation: 0,
       sellerDid: `did:mst:wallet:${user.wallet_address.toLowerCase()}`,
       title: validateText(body.title, 'Title', 160), description: String(body.description || '').trim().slice(0, 4000),
-      price, currency: 'TMSTC', location: validateText(body.location, 'Location', 120), status: 'PENDING_REVIEW', listedAt: createdAt, createdAt,
+      price, currency: 'TMSTC', location: validateText(body.location, 'Location', 120), status: 'ACTIVE', listedAt: createdAt, createdAt,
       mstTxHash: /^0x[0-9a-fA-F]{64}$/.test(String(body.mstTxHash || '')) ? body.mstTxHash : '',
     };
     await sql.query('INSERT INTO listings(listing_id,passport_id,seller_wallet,status,payload_json,created_at,updated_at) VALUES($1,$2,$3,$4,$5::jsonb,$6,$6)', [listingId, passportId, user.wallet_address, listing.status, JSON.stringify(listing), createdAt]);
-    await audit(user, 'LISTING_SUBMITTED', listingId);
+    await audit(user, 'LISTING_PUBLISHED', listingId);
     return send(res, 201, { listing });
   }
 

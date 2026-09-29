@@ -95,7 +95,7 @@ function SellPage({ user, busy, message, onConnect, onPublish }: WorkspaceProps)
           <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={4000} /></Field>
           <div className="grid gap-6 sm:grid-cols-2"><Field label="Price"><input required type="number" min="0.000001" max="1000000" step="0.000001" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} /></Field><Field label="Location"><input required value={location} onChange={(e) => setLocation(e.target.value)} maxLength={120} /></Field></div>
           {error && <p role="alert" className="meta text-unverified">{error}</p>}
-          <button disabled={busy || !walletReady} className="meta w-full bg-primary py-5 text-primary-foreground disabled:opacity-60">{busy ? "Submitting for review…" : !walletReady ? "Connect BridgeKey to continue" : "Create product passport & submit listing"}</button>
+          <button disabled={busy || !walletReady} className="meta w-full bg-primary py-5 text-primary-foreground disabled:opacity-60">{busy ? "Publishing…" : !walletReady ? "Connect BridgeKey to continue" : "Create product passport & publish listing"}</button>
         </form>
       )}
       {message && <p role="status" className="meta mt-6">{message}</p>}
