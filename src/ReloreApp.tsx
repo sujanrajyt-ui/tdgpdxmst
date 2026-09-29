@@ -40,10 +40,10 @@ export function ReloreApp() {
     try {
       const result = await getPublicMarketplace();
       const liveItems = toReloreProducts(result);
-      setItems(liveItems.length ? liveItems : import.meta.env.DEV ? previewCatalog() : []);
+      setItems([...liveItems, ...previewCatalog()]);
       setLoadError("");
     } catch (error) {
-      setItems(import.meta.env.DEV ? previewCatalog() : []);
+      setItems(previewCatalog());
       setLoadError(error instanceof Error ? error.message : "Marketplace could not load.");
     }
   }, []);

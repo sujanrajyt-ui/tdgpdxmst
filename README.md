@@ -39,7 +39,7 @@ The API uses an HttpOnly session cookie and credentialed CORS; do not use `*` fo
 
 The API stores accounts, passports, listings, seller applications, evidence metadata/files, sessions, and admin audit events in `.data/marketplace.sqlite` and `.data/evidence/`. The Vite dev server proxies `/api` to the API. Wallet sign-in uses a one-time server nonce and an EVM signature; signatures do not send transactions. Add public admin wallet addresses to `ADMIN_WALLETS` in the ignored local `.env` file.
 
-The imported marketplace catalog, product pages, passport verification, seller listing flow, My Products, account, and admin review screen use the shared API. During local development only, sample catalog cards appear if the API is unavailable or has no public listings; production does not show those samples. Checkout and payment are intentionally not enabled.
+The imported marketplace catalog, product pages, passport verification, seller listing flow, My Products, account, and admin review screen use the shared API. Clearly labelled demo previews appear alongside API listings so the marketplace is not empty; they are fictional frontend-only samples, cannot be bought, and are never saved as real marketplace records. Checkout and payment are intentionally not enabled.
 
 ### Backend API
 
