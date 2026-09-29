@@ -51,18 +51,18 @@ The imported marketplace catalog, product pages, passport verification, seller l
 
 The local SQLite database is suitable for development on one machine. Before a public launch, move it to a managed PostgreSQL database and private object storage, add migrations and backups, and deploy the API behind HTTPS.
 
-## MST Testnet transactions
+## MST Testnet contracts
 
-The optional contract tools target MST Testnet (`https://testnetrpc.mstblockchain.com`, chain ID `91562037`, tMSTC). The marketplace itself currently saves passport and listing records to the Railway API after wallet sign-in; creating these records does not write them to MST. A deployed contract address or a wallet connection alone does not make a marketplace record on-chain.
+The Solidity contracts are included in this repository, but they have **not been deployed**. No marketplace passport, service event, or ownership transfer is currently written to MST. The marketplace saves passport and listing records to the Railway API after wallet sign-in. A wallet connection alone is only sign-in; it does not create an on-chain record.
 
 To deploy the included contracts:
 
 1. Copy `.env.example` to `.env` and set `PRIVATE_KEY` to a testnet-only deployment key. Keep it secret and never add it to a `VITE_*` variable.
 2. Fund that account with test MSTC from the MST Testnet faucet.
 3. Run `npx hardhat compile` and `npx hardhat run scripts/deploy.ts --network testnet`.
-4. Copy the printed registry addresses into `.env.local` using the `VITE_MST_*` variable names in `.env.example`, then restart Vite.
+4. After deployment, copy the printed registry addresses into `.env.local` using the `VITE_MST_*` variable names in `.env.example`, then restart Vite.
 
-The browser contract addresses are configured from the `VITE_MST_*` environment variables. Listing and warranty events use `LifecycleRegistry`; they are not separate contracts. Listing publication remains subject to the admin review queue.
+Until contracts are deployed and their addresses are configured, blockchain actions are unavailable. Listing publication remains subject to the admin review queue.
 
 ## Before a public launch
 
