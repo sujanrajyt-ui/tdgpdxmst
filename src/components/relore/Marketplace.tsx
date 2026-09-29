@@ -120,9 +120,9 @@ export function Marketplace({ products }: { products: Product[] }) {
               Object library
             </h2>
             <p className="meta mt-5 max-w-xs leading-relaxed">
-              Second-hand objects.
+              Device identity and seller details.
               <br />
-              Documented for their next owner.
+              See what&apos;s on record before you buy.
             </p>
           </div>
           <div className="meta">{list.length} objects</div>

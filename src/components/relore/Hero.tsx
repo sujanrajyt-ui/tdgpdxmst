@@ -119,7 +119,7 @@ export function Hero({ product }: { product?: Product }) {
               className="block"
               style={{ transform: `translateY(${-intro * 22}vh) translateX(${-intro * 4}vw)` }}
             >
-              Every object
+              Every device
             </span>
             <span
               className="block"
@@ -129,14 +129,14 @@ export function Hero({ product }: { product?: Product }) {
             </span>
           </h1>
           <p className="meta mt-8" style={{ opacity: 1 - intro }}>
-            Used · Verified · Documented
+            Product identity · Seller details · One passport
           </p>
         </div>
 
         {/* Word sequence */}
         <BigWord label="Used" enter={used} exit={verified} />
-        <BigWord label="Verified" enter={verified} exit={documented} />
-        <BigWord label="Documented" enter={documented} exit={passport} />
+        <BigWord label="Reported" enter={verified} exit={documented} />
+        <BigWord label="Recorded" enter={documented} exit={passport} />
 
         {/* Passport metadata */}
         <div
@@ -165,9 +165,9 @@ export function Hero({ product }: { product?: Product }) {
           style={{ opacity: remembers * (1 - next) }}
         >
           <h2 className="editorial text-[11vw] leading-[0.88] text-foreground sm:text-[6.5vw]">
-            It remembers
+            See what&apos;s
             <br />
-            where it&apos;s been.
+            on record.
           </h2>
         </div>
 
@@ -227,11 +227,11 @@ function StaticHero() {
       />
       <div className="relative z-10 text-center">
         <h1 className="editorial text-[13vw] leading-[0.85] text-foreground sm:text-[8vw]">
-          Every object
+          Every device
           <br />
           has a story.
         </h1>
-        <p className="meta mt-8">Used · Verified · Documented</p>
+        <p className="meta mt-8">Product identity · Seller details · One passport</p>
       </div>
     </section>
   );
