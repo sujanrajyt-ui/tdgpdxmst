@@ -1,11 +1,50 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { parseEther } from "ethers";
 import { formatPrice, type Product, type TrustLevel } from "@/lib/relore-market-data";
 import { PassportBadge, Reveal, StateBadge, Spec, TrustTag } from "@/components/relore/Bits";
+import { beginTmstcOrder, cancelTmstcOrder, confirmTmstcOrder, signInWithWallet } from "@/core/api";
+import { connectWallet } from "@/core/mst/wallet";
 
 export function ReloreProductPage({ product, related }: { product: Product; related: Product[] }) {
   const [offset, setOffset] = useState(0);
   const [checkoutNote, setCheckoutNote] = useState("");
+  const [paymentTxHash, setPaymentTxHash] = useState("");
+  const [paying, setPaying] = useState(false);
+
+  const buyWithTmstc = async () => {
+    let orderId = "";
+    let txHash = "";
+    setPaying(true);
+    setCheckoutNote("");
+    try {
+      if (!product.sellerWallet) throw new Error("Seller wallet is missing from this listing.");
+      if (product.currency !== "TMSTC") throw new Error("This listing is not priced in tMSTC.");
+      const wallet = await connectWallet();
+      if (!wallet.address || !wallet.signer) throw new Error("Connect your MST Testnet wallet to continue.");
+      if (wallet.address.toLowerCase() === product.sellerWallet.toLowerCase()) throw new Error("You cannot buy your own listing.");
+      await signInWithWallet(wallet.address, wallet.signer);
+      const order = await beginTmstcOrder(product.id);
+      orderId = order.id;
+      if (order.sellerWallet.toLowerCase() !== product.sellerWallet.toLowerCase()) throw new Error("The listing seller changed. Refresh the page and try again.");
+      const tx = await wallet.signer.sendTransaction({ to: order.sellerWallet, value: parseEther(String(order.price)) });
+      txHash = tx.hash;
+      setPaymentTxHash(tx.hash);
+      setCheckoutNote("Payment submitted. Waiting for MST Testnet confirmation…");
+      const receipt = await tx.wait();
+      if (!receipt || receipt.status !== 1) throw new Error("The payment did not confirm on MST Testnet.");
+      await confirmTmstcOrder(order.id, receipt.hash);
+      setCheckoutNote("Payment confirmed. The seller must now transfer the product passport to your wallet.");
+    } catch (error) {
+      if (orderId && !txHash) await cancelTmstcOrder(orderId).catch(() => undefined);
+      const message = error instanceof Error ? error.message : "Could not complete the tMSTC payment.";
+      setCheckoutNote(txHash
+        ? `Transaction submitted (${txHash}), but the app could not finish recording the order. Do not pay again; contact the seller or admin.`
+        : message);
+    } finally {
+      setPaying(false);
+    }
+  };
 
   useEffect(() => {
     let frame = 0;
@@ -27,17 +66,19 @@ export function ReloreProductPage({ product, related }: { product: Product; rela
           <h1 className="editorial mt-3 text-5xl text-foreground sm:text-6xl">{product.name}</h1>
           <div className="mt-4 flex flex-wrap items-center gap-3"><PassportBadge status={product.passport} /><StateBadge state={product.state} /></div>
           <Spec label="Condition" value={product.condition} />
-          <Spec label="Price" value={formatPrice(product.price)} />
+          <Spec label="Price" value={formatPrice(product.price, product.currency)} />
           <Spec label="Seller" value={product.seller + " · seller since " + product.sellerSince} />
           <Spec label="Delivery / Pickup" value={<span className="text-sm font-normal leading-relaxed text-muted-foreground">{product.delivery}<br />{product.pickup}</span>} />
-          <button type="button" disabled={product.state !== "Live" || Boolean(product.isPreview)} onClick={() => setCheckoutNote("Checkout and payment are not enabled yet.")} className="meta mt-8 w-full bg-primary py-5 text-primary-foreground cine transition-all duration-500 hover:brightness-110 disabled:opacity-50">
-            {product.isPreview ? "Demo preview · not for sale" : product.state !== "Live" ? "Unavailable · " + product.state : "Buy now"}
+          {product.state === "Live" && !product.isPreview && <p className="meta mt-8 leading-relaxed">Direct tMSTC payment goes straight to the seller. It has no escrow or on-chain refund protection; transaction gas is separate.</p>}
+          <button type="button" disabled={product.state !== "Live" || Boolean(product.isPreview) || paying} onClick={() => void buyWithTmstc()} className="meta mt-4 w-full bg-primary py-5 text-primary-foreground cine transition-all duration-500 hover:brightness-110 disabled:opacity-50">
+            {product.isPreview ? "Demo preview · not for sale" : product.state !== "Live" ? "Unavailable · " + product.state : paying ? "Waiting for wallet…" : "Pay " + formatPrice(product.price, product.currency)}
           </button>
           <a href={"/passport/" + encodeURIComponent(product.passportId || product.objectId)} className="meta group mt-3 flex w-full items-center justify-center gap-2 border border-border py-5 text-foreground cine transition-colors duration-500 hover:border-primary hover:text-primary">
             View product passport
             <ArrowRight className="size-3.5 cine transition-transform duration-500 group-hover:translate-x-1.5" />
           </a>
-          <p role="status" className="meta mt-6 leading-relaxed">{checkoutNote || (product.isPreview ? "Fictional sample product shown to preview the marketplace. No real device or passport is available." : "Checkout and payment are not enabled yet.")}</p>
+          <p role="status" className="meta mt-6 break-words leading-relaxed">{checkoutNote || (product.isPreview ? "Fictional sample product shown to preview the marketplace. No real device or passport is available." : "Pay directly to the seller using tMSTC on MST Testnet.")}</p>
+          {paymentTxHash && <a className="meta mt-3 inline-block text-primary underline" href={`https://testnet.mstscan.com/tx/${paymentTxHash}`} target="_blank" rel="noreferrer">View payment on MSTScan</a>}
         </div>
       </div>
       <div className="mt-28 grid gap-x-16 gap-y-14 md:grid-cols-2">
@@ -51,7 +92,7 @@ export function ReloreProductPage({ product, related }: { product: Product; rela
       <div className="mt-28">
         <h2 className="editorial text-3xl text-foreground">Other objects</h2>
         <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-x-10 lg:grid-cols-3">
-          {related.map((item) => <a key={item.id} href={"/product/" + encodeURIComponent(item.id)} className="group block"><div className="overflow-hidden bg-surface"><img src={item.image} alt={item.name} loading="lazy" width={1024} height={1280} className="aspect-[4/5] w-full object-cover cine transition-transform duration-[900ms] group-hover:scale-[1.04]" /></div><div className="mt-4 flex items-baseline justify-between gap-3"><span className="font-display tracking-tight">{item.name}</span><span className="meta">{formatPrice(item.price)}</span></div></a>)}
+          {related.map((item) => <a key={item.id} href={"/product/" + encodeURIComponent(item.id)} className="group block"><div className="overflow-hidden bg-surface"><img src={item.image} alt={item.name} loading="lazy" width={1024} height={1280} className="aspect-[4/5] w-full object-cover cine transition-transform duration-[900ms] group-hover:scale-[1.04]" /></div><div className="mt-4 flex items-baseline justify-between gap-3"><span className="font-display tracking-tight">{item.name}</span><span className="meta">{formatPrice(item.price, item.currency)}</span></div></a>)}
         </div>
       </div>
     </main>

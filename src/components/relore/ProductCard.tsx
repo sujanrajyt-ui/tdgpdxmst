@@ -26,7 +26,7 @@ export function ProductCard({ product }: { product: Product }) {
             {product.name}
           </h3>
           <div className="font-display text-base tracking-tight text-foreground sm:text-lg">
-            {formatPrice(product.price)}
+            {formatPrice(product.price, product.currency)}
           </div>
         </div>
 

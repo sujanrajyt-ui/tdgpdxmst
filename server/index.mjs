@@ -6,6 +6,7 @@ import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { getAddress, verifyMessage } from 'ethers';
+import { isValidTmstcPrice, verifyDirectTmstcPayment } from './tmstc-payments.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = resolve(root, process.env.DATA_DIR || '.data');
@@ -92,6 +93,11 @@ db.exec(`
     created_at TEXT NOT NULL
   );
 `);
+
+// Seller access is automatic: every connected wallet can buy and sell.
+// Migrate pending applications once the local database is opened.
+db.prepare("UPDATE seller_applications SET status='APPROVED',reviewed_at=COALESCE(reviewed_at, submitted_at) WHERE status='PENDING'").run();
+db.prepare("UPDATE users SET role=CASE WHEN role='ADMIN' THEN role ELSE 'SELLER' END, seller_status='APPROVED' WHERE seller_status!='APPROVED' OR role NOT IN ('ADMIN','SELLER')").run();
 
 const now = () => new Date().toISOString();
 const sha256 = value => createHash('sha256').update(value).digest('hex');
@@ -187,7 +193,7 @@ const routes = async (req, res) => {
   if (!['GET', 'HEAD', 'OPTIONS'].includes(method) && !requireSameOrigin(req, res)) return;
   if (method === 'OPTIONS') { res.writeHead(204, { allow: 'GET,POST,PATCH,DELETE,OPTIONS' }); res.end(); return; }
 
-  if (method === 'GET' && path === '/api/health') return send(res, 200, { status: 'ok', database: 'sqlite', chainId: 91562037, payments: process.env.PAYMENT_PROVIDER ? 'configured' : 'not_configured', contracts: Boolean(process.env.MST_PRODUCT_PASSPORT_REGISTRY && process.env.MST_OWNERSHIP_REGISTRY) });
+  if (method === 'GET' && path === '/api/health') return send(res, 200, { status: 'ok', database: 'sqlite', chainId: 91562037, payments: 'tmstc_direct_testnet', contracts: Boolean(process.env.MST_PRODUCT_PASSPORT_REGISTRY && process.env.MST_OWNERSHIP_REGISTRY) });
 
   if (method === 'POST' && path === '/api/auth/nonce') {
     const body = await readJson(req);
@@ -217,8 +223,8 @@ const routes = async (req, res) => {
     db.prepare('DELETE FROM challenges WHERE wallet_address=?').run(wallet);
     const timestamp = now();
     const id = `wallet:${wallet.toLowerCase()}`;
-    const initialRole = admins.has(wallet.toLowerCase()) ? 'ADMIN' : 'CONSUMER';
-    db.prepare("INSERT INTO users(id,wallet_address,role,created_at,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(wallet_address) DO UPDATE SET role=CASE WHEN excluded.role='ADMIN' THEN 'ADMIN' ELSE users.role END,updated_at=excluded.updated_at").run(id, wallet, initialRole, timestamp, timestamp);
+    const initialRole = admins.has(wallet.toLowerCase()) ? 'ADMIN' : 'SELLER';
+    db.prepare("INSERT INTO users(id,wallet_address,role,seller_status,created_at,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(wallet_address) DO UPDATE SET role=CASE WHEN excluded.role='ADMIN' THEN 'ADMIN' ELSE 'SELLER' END,seller_status='APPROVED',updated_at=excluded.updated_at").run(id, wallet, initialRole, 'APPROVED', timestamp, timestamp);
     const user = db.prepare('SELECT * FROM users WHERE wallet_address=?').get(wallet);
     const token = randomBytes(32).toString('base64url');
     const expiresAt = Date.now() + sessionHours * 60 * 60_000;
@@ -251,10 +257,11 @@ const routes = async (req, res) => {
     const user = requireUser(req, res); if (!user) return;
     const body = await readJson(req);
     const business = validateText(body.businessName, 'Business name', 120);
-    db.prepare(`INSERT INTO seller_applications(wallet_address,business_name,status,submitted_at) VALUES(?,?,?,?) ON CONFLICT(wallet_address) DO UPDATE SET business_name=excluded.business_name,status='PENDING',submitted_at=excluded.submitted_at,reviewed_at=NULL`).run(user.wallet_address, business, 'PENDING', now());
-    db.prepare('UPDATE users SET seller_status=?,updated_at=? WHERE id=?').run('PENDING', now(), user.id);
-    audit(user, 'SELLER_APPLICATION_SUBMITTED', user.wallet_address);
-    return send(res, 201, { status: 'PENDING' });
+    const submittedAt = now();
+    db.prepare(`INSERT INTO seller_applications(wallet_address,business_name,status,submitted_at,reviewed_at) VALUES(?,?, 'APPROVED', ?, ?) ON CONFLICT(wallet_address) DO UPDATE SET business_name=excluded.business_name,status='APPROVED',submitted_at=excluded.submitted_at,reviewed_at=excluded.reviewed_at`).run(user.wallet_address, business, submittedAt, submittedAt);
+    db.prepare("UPDATE users SET role=CASE WHEN role='ADMIN' THEN role ELSE 'SELLER' END,seller_status='APPROVED',updated_at=? WHERE id=?").run(submittedAt, user.id);
+    audit(user, 'SELLER_AUTO_APPROVED', user.wallet_address);
+    return send(res, 200, { status: 'APPROVED' });
   }
 
   if (method === 'GET' && path === '/api/listings') {
@@ -332,7 +339,7 @@ const routes = async (req, res) => {
     const active = db.prepare(`SELECT 1 FROM listings WHERE passport_id=? AND status IN ('ACTIVE','PENDING_REVIEW','RESERVED')`).get(passportId);
     if (active) return send(res, 409, { error: 'active_listing_exists' });
     const price = Number(body.price);
-    if (!Number.isSafeInteger(price) || price < 1 || price > 10_000_000_000) return send(res, 400, { error: 'invalid_price', message: 'Price must be an integer number of rupees.' });
+    if (!isValidTmstcPrice(body.price)) return send(res, 400, { error: 'invalid_price', message: 'Price must be between 0.000001 and 1,000,000 tMSTC, with up to 6 decimal places.' });
     const listingId = `LST-${randomBytes(5).toString('hex').toUpperCase()}`;
     const createdAt = now();
     const listing = {
@@ -340,7 +347,7 @@ const routes = async (req, res) => {
       sellerName: user.display_name || `MST user ${user.wallet_address.slice(-4)}`,
       sellerReputation: 0, sellerDid: `did:mst:wallet:${user.wallet_address.toLowerCase()}`,
       title: validateText(body.title, 'Title', 160), description: String(body.description || '').trim().slice(0, 4000),
-      price, currency: 'INR', location: validateText(body.location, 'Location', 120),
+      price, currency: 'TMSTC', location: validateText(body.location, 'Location', 120),
       status: 'PENDING_REVIEW', listedAt: createdAt, createdAt,
       mstTxHash: /^0x[0-9a-fA-F]{64}$/.test(String(body.mstTxHash || '')) ? body.mstTxHash : '',
     };
@@ -392,8 +399,59 @@ const routes = async (req, res) => {
 
   if (method === 'POST' && path === '/api/orders') {
     const user = requireUser(req, res); if (!user) return;
-    if (!process.env.PAYMENT_PROVIDER || !process.env.PAYMENT_API_KEY) return send(res, 503, { error: 'payments_not_configured', message: 'Checkout is unavailable until a payment provider is configured.' });
-    return send(res, 501, { error: 'payment_adapter_not_implemented', message: 'Configure the provider-specific checkout adapter before accepting payment.' });
+    const body = await readJson(req);
+    const listingId = validateText(body.listingId, 'Listing ID', 40);
+    const row = db.prepare('SELECT * FROM listings WHERE listing_id=?').get(listingId);
+    if (!row) return send(res, 404, { error: 'listing_not_found' });
+    if (row.status !== 'ACTIVE') return send(res, 409, { error: 'listing_unavailable', message: 'This object is no longer available to buy.' });
+    const listing = JSON.parse(row.payload_json);
+    if (listing.currency !== 'TMSTC') return send(res, 400, { error: 'unsupported_currency', message: 'This listing is not priced in tMSTC.' });
+    if (row.seller_wallet.toLowerCase() === user.wallet_address.toLowerCase()) return send(res, 400, { error: 'self_purchase', message: 'You cannot buy your own listing.' });
+    const orderId = `ORD-${randomBytes(6).toString('hex').toUpperCase()}`;
+    const timestamp = now();
+    db.prepare('INSERT INTO orders(order_id,listing_id,buyer_wallet,seller_wallet,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)').run(orderId, listingId, user.wallet_address, row.seller_wallet, 'PAYMENT_PENDING', timestamp, timestamp);
+    listing.status = 'RESERVED';
+    db.prepare('UPDATE listings SET status=?,payload_json=?,updated_at=? WHERE listing_id=?').run(listing.status, JSON.stringify(listing), timestamp, listingId);
+    audit(user, 'TMSTC_PAYMENT_STARTED', orderId);
+    return send(res, 201, { order: { id: orderId, listingId, sellerWallet: row.seller_wallet, price: listing.price, currency: 'TMSTC', status: 'PAYMENT_PENDING' } });
+  }
+
+  const tmstcOrderMatch = path.match(/^\/api\/orders\/(ORD-[A-F0-9]{12})$/);
+  if (tmstcOrderMatch && method === 'PATCH') {
+    const user = requireUser(req, res); if (!user) return;
+    const order = db.prepare('SELECT * FROM orders WHERE order_id=?').get(tmstcOrderMatch[1]);
+    if (!order) return send(res, 404, { error: 'order_not_found' });
+    if (order.buyer_wallet.toLowerCase() !== user.wallet_address.toLowerCase()) return forbidden(res);
+    if (order.status !== 'PAYMENT_PENDING') return send(res, 409, { error: 'order_not_pending' });
+    const listingRow = db.prepare('SELECT * FROM listings WHERE listing_id=?').get(order.listing_id);
+    if (!listingRow) return send(res, 404, { error: 'listing_not_found' });
+    const listing = JSON.parse(listingRow.payload_json);
+    const body = await readJson(req);
+    const receipt = await verifyDirectTmstcPayment(body.txHash, order.buyer_wallet, order.seller_wallet, listing.price);
+    const timestamp = now();
+    listing.status = 'PENDING_TRANSFER';
+    listing.buyerWallet = order.buyer_wallet;
+    listing.paymentTxHash = receipt.hash;
+    db.prepare('UPDATE orders SET status=?,payment_reference=?,updated_at=? WHERE order_id=?').run('PAID_AWAITING_TRANSFER', receipt.hash, timestamp, order.order_id);
+    db.prepare('UPDATE listings SET status=?,payload_json=?,updated_at=? WHERE listing_id=?').run(listing.status, JSON.stringify(listing), timestamp, order.listing_id);
+    audit(user, 'TMSTC_PAYMENT_CONFIRMED', order.order_id);
+    return send(res, 200, { orderId: order.order_id, status: 'PAID_AWAITING_TRANSFER', txHash: receipt.hash, blockNumber: receipt.blockNumber });
+  }
+  if (tmstcOrderMatch && method === 'DELETE') {
+    const user = requireUser(req, res); if (!user) return;
+    const order = db.prepare('SELECT * FROM orders WHERE order_id=?').get(tmstcOrderMatch[1]);
+    if (!order) return send(res, 404, { error: 'order_not_found' });
+    if (order.buyer_wallet.toLowerCase() !== user.wallet_address.toLowerCase()) return forbidden(res);
+    if (order.status !== 'PAYMENT_PENDING' || order.payment_reference) return send(res, 409, { error: 'order_cannot_be_cancelled' });
+    const timestamp = now();
+    const listingRow = db.prepare('SELECT * FROM listings WHERE listing_id=?').get(order.listing_id);
+    if (listingRow?.status === 'RESERVED') {
+      const listing = JSON.parse(listingRow.payload_json);
+      listing.status = 'ACTIVE';
+      db.prepare('UPDATE listings SET status=?,payload_json=?,updated_at=? WHERE listing_id=?').run('ACTIVE', JSON.stringify(listing), timestamp, order.listing_id);
+    }
+    db.prepare('UPDATE orders SET status=?,updated_at=? WHERE order_id=?').run('CANCELLED', timestamp, order.order_id);
+    return send(res, 200, { status: 'CANCELLED' });
   }
 
   if (method === 'POST' && path === '/api/evidence') {

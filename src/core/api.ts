@@ -111,6 +111,32 @@ export async function createListingRecord(input: {
     return result.listing;
 }
 
+export type TmstcPaymentOrder = {
+    id: string;
+    listingId: string;
+    sellerWallet: string;
+    price: number;
+    currency: 'TMSTC';
+    status: string;
+};
+
+export async function beginTmstcOrder(listingId: string): Promise<TmstcPaymentOrder> {
+    const result = await request<{ order: TmstcPaymentOrder }>('/api/orders', {
+        method: 'POST', body: JSON.stringify({ listingId }),
+    });
+    return result.order;
+}
+
+export async function confirmTmstcOrder(orderId: string, txHash: string): Promise<void> {
+    await request(`/api/orders/${encodeURIComponent(orderId)}`, {
+        method: 'PATCH', body: JSON.stringify({ txHash }),
+    });
+}
+
+export async function cancelTmstcOrder(orderId: string): Promise<void> {
+    await request(`/api/orders/${encodeURIComponent(orderId)}`, { method: 'DELETE' });
+}
+
 export async function getPublicMarketplace(): Promise<{ passports: ProductPassport[]; listings: MarketplaceListing[] }> {
     const [passportResult, listingResult] = await Promise.all([
         request<{ passports: ProductPassport[] }>('/api/passports'),

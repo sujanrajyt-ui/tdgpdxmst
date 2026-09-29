@@ -65,6 +65,7 @@ export function toReloreProduct(passport: ProductPassport, listing: MarketplaceL
     category: displayCategory(passport.category),
     condition: displayCondition(passport.conditionReport?.display),
     price: listing.price,
+    currency: listing.currency,
     seller: listing.sellerName || "Marketplace seller",
     sellerSince: dateLabel(listing.createdAt || listing.listedAt).slice(-4),
     sellerResponse: "Response time not yet established",
@@ -86,6 +87,7 @@ export function toReloreProduct(passport: ProductPassport, listing: MarketplaceL
       passport.ownershipTxHash && { label: 'Initial ownership', hash: passport.ownershipTxHash },
       passport.attestationTxHash && { label: 'Seller-reported identity claim', hash: passport.attestationTxHash },
       listing.mstTxHash && { label: 'Listing lifecycle event', hash: listing.mstTxHash },
+      listing.paymentTxHash && { label: 'Direct tMSTC payment', hash: listing.paymentTxHash },
     ].filter((item): item is { label: string; hash: string } => Boolean(item)),
     sellerWallet: listing.sellerWallet,
   };

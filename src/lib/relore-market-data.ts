@@ -5,6 +5,7 @@ import laptop from "@/assets/relore/hero-laptop-open.jpg";
 export type Condition = "Excellent" | "Very good" | "Good" | "Fair";
 export type PassportStatus = "Verified" | "Seller-provided" | "Not verified";
 export type ListingState = "Draft" | "Pending review" | "Live" | "Reserved" | "Sold";
+export type PriceCurrency = "INR" | "USD" | "TMSTC";
 export type TrustLevel = "verified" | "seller" | "unverified";
 
 export type TimelineEvent = {
@@ -25,6 +26,7 @@ export type Product = {
   category: string;
   condition: Condition;
   price: number;
+  currency?: PriceCurrency;
   seller: string;
   sellerSince: string;
   sellerResponse: string;
@@ -341,7 +343,9 @@ export const categories = ["Laptops", "Cameras", "Furniture"];
 export const brands = Array.from(new Set(products.map((p) => p.brand)));
 export const conditions: Condition[] = ["Excellent", "Very good", "Good", "Fair"];
 
-export const formatPrice = (n: number) => "₹" + n.toLocaleString("en-IN");
+export const formatPrice = (n: number, currency: PriceCurrency = "INR") => currency === "TMSTC"
+  ? `${n.toLocaleString("en-US", { maximumFractionDigits: 6 })} tMSTC`
+  : currency === "USD" ? "$" + n.toLocaleString("en-US", { maximumFractionDigits: 2 }) : "₹" + n.toLocaleString("en-IN");
 
 export const getProduct = (id: string) => products.find((p) => p.id === id);
 

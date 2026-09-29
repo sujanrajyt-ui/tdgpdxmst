@@ -10,8 +10,6 @@ type WorkspaceProps = {
   busy: boolean;
   message: string;
   onConnect: () => void;
-  onRefreshSellerStatus: () => void;
-  onApply: (businessName: string) => Promise<void>;
   onPublish: (draft: ListingDraft) => Promise<void>;
   onSaveName: (name: string) => Promise<void>;
   onSignOut: () => Promise<void>;
@@ -40,8 +38,7 @@ export function ReloreWorkspacePage({ route, ...props }: WorkspaceProps & { rout
   );
 }
 
-function SellPage({ user, busy, message, onConnect, onRefreshSellerStatus, onApply, onPublish }: WorkspaceProps) {
-  const [businessName, setBusinessName] = useState("");
+function SellPage({ user, busy, message, onConnect, onPublish }: WorkspaceProps) {
   const [category, setCategory] = useState<ProductCategory>("LAPTOP");
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
@@ -53,10 +50,6 @@ function SellPage({ user, busy, message, onConnect, onRefreshSellerStatus, onApp
   const [price, setPrice] = useState(0);
   const [location, setLocation] = useState("");
   const [error, setError] = useState("");
-  const submitApply = async (event: FormEvent) => {
-    event.preventDefault(); setError("");
-    try { await onApply(businessName.trim() || "Individual seller"); } catch (e) { setError(e instanceof Error ? e.message : "Could not submit seller application."); }
-  };
   const submitListing = async (event: FormEvent) => {
     event.preventDefault(); setError("");
     if (!identifier.trim()) { setError("Enter the device serial number or IMEI."); return; }
@@ -69,16 +62,9 @@ function SellPage({ user, busy, message, onConnect, onRefreshSellerStatus, onApp
       <div className="meta">RELORE · SELLER WORKSPACE</div>
       <h1 className="editorial mt-4 text-5xl text-foreground sm:text-7xl">Sell an object.</h1>
       <p className="meta mt-5 max-w-xl leading-relaxed">Give its next owner the details and history they need to decide with confidence.</p>
-      {!user ? <ConnectCard onConnect={onConnect} /> : user.sellerStatus !== "APPROVED" && user.role !== "ADMIN" ? (
-        <form onSubmit={submitApply} className="mt-12 space-y-6 border-t border-border pt-8">
-          <h2 className="meta text-foreground">Seller application</h2>
-          <Field label="Business or seller name"><input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Individual seller" maxLength={120} /></Field>
-          {user.sellerStatus === "PENDING" ? <div><p className="meta">Your seller application is waiting for admin review. Once approved, check your status here to unlock product listing.</p><button type="button" disabled={busy} onClick={onRefreshSellerStatus} className="meta mt-4 border border-border px-5 py-3 text-foreground disabled:opacity-60">{busy ? "Checking…" : "Check application status"}</button></div> : user.sellerStatus === "REJECTED" ? <p className="meta">Your last application was declined. You can submit an updated application.</p> : null}
-          {user.sellerStatus !== "PENDING" && <button disabled={busy} className="meta bg-primary px-6 py-4 text-primary-foreground disabled:opacity-60">{busy ? "Submitting…" : "Apply to sell"}</button>}
-        </form>
-      ) : (
+      {!user ? <ConnectCard onConnect={onConnect} /> : (
         <form onSubmit={submitListing} className="mt-12 space-y-7 border-t border-border pt-8">
-          <h2 className="meta text-foreground">Product details</h2>
+          <h2 className="meta text-foreground">Product details · Seller access is automatic</h2>
           <Field label="Product type"><select value={category} onChange={(e) => setCategory(e.target.value as ProductCategory)}><option value="LAPTOP">Laptop</option><option value="SMARTPHONE">Phone</option><option value="CAMERA">Camera</option><option value="FURNITURE">Furniture</option><option value="OTHER">Other object</option></select></Field>
           <div className="grid gap-6 sm:grid-cols-2"><Field label="Brand"><input required value={brand} onChange={(e) => setBrand(e.target.value)} maxLength={80} /></Field><Field label="Release year"><input type="number" min="1970" max={new Date().getFullYear() + 1} value={releaseYear} onChange={(e) => setReleaseYear(Number(e.target.value))} required /></Field></div>
           <Field label="Model"><input required value={model} onChange={(e) => setModel(e.target.value)} maxLength={140} /></Field>
@@ -87,13 +73,13 @@ function SellPage({ user, busy, message, onConnect, onRefreshSellerStatus, onApp
           <h2 className="meta border-t border-border pt-8 text-foreground">Listing</h2>
           <Field label="Listing title"><input required value={title} onChange={(e) => setTitle(e.target.value)} maxLength={160} placeholder={brand && model ? brand + " " + model : "Product name"} /></Field>
           <Field label="Description"><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={4000} /></Field>
-          <div className="grid gap-6 sm:grid-cols-2"><Field label="Price · INR"><input required type="number" min="1" step="1" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} /></Field><Field label="Location"><input required value={location} onChange={(e) => setLocation(e.target.value)} maxLength={120} /></Field></div>
+          <div className="grid gap-6 sm:grid-cols-2"><Field label="Price · tMSTC"><input required type="number" min="0.000001" max="1000000" step="0.000001" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))} /><span className="meta mt-2 block normal-case tracking-normal">Buyers pay this amount directly to your connected wallet. Wallet gas is separate.</span></Field><Field label="Location"><input required value={location} onChange={(e) => setLocation(e.target.value)} maxLength={120} /></Field></div>
           {error && <p role="alert" className="meta text-unverified">{error}</p>}
           <button disabled={busy} className="meta w-full bg-primary py-5 text-primary-foreground disabled:opacity-60">{busy ? "Submitting for review…" : "Create product passport & submit listing"}</button>
         </form>
       )}
       {message && <p role="status" className="meta mt-6">{message}</p>}
-      {error && user && user.sellerStatus !== "APPROVED" && <p role="alert" className="meta mt-6 text-unverified">{error}</p>}
+      {error && user && <p role="alert" className="meta mt-6 text-unverified">{error}</p>}
     </section>
   );
 }
@@ -111,16 +97,16 @@ function MyProductsPage({ user, passports, listings, previewItems, onConnect }: 
           {passports.map((passport) => {
             const listing = listings.find((entry) => entry.passportId === passport.passportId);
             const product = listing ? previewItems.find((p) => p.id === listing.id) : undefined;
-            const transactions = [passport.passportTxHash, passport.ownershipTxHash, passport.attestationTxHash, listing?.mstTxHash].filter((hash): hash is string => Boolean(hash));
-            return <article key={passport.passportId} className="border-t border-border py-5"><div className="meta">{passport.passportId}</div><h2 className="mt-3 font-display text-xl">{listing?.title || (passport.brand + " " + passport.model)}</h2><p className="meta mt-2">{listing ? listing.status.replace(/_/g, " ") + " · " + formatPrice(listing.price) : "Passport only"}</p><a href={product ? "/product/" + encodeURIComponent(product.id) : "/passport/" + encodeURIComponent(passport.passportId)} className="meta mt-5 inline-block text-primary underline">{product ? "View listing" : "View passport"}</a>{transactions.length ? <div className="mt-5 border-t border-border pt-4"><p className="meta text-foreground">MST Testnet · {transactions.length} confirmed transaction{transactions.length === 1 ? "" : "s"}</p><ul className="mt-3 space-y-2">{transactions.map((hash, index) => <li key={hash}><a className="meta text-primary underline" href={`https://testnet.mstscan.com/tx/${hash}`} target="_blank" rel="noreferrer">Transaction {index + 1} · {hash.slice(0, 10)}…{hash.slice(-6)}</a></li>)}</ul></div> : null}<OwnershipTransferStart passportId={passport.passportId} sellerWallet={user.walletAddress} /></article>;
+            const transactions = [passport.passportTxHash, passport.ownershipTxHash, passport.attestationTxHash, listing?.mstTxHash, listing?.paymentTxHash].filter((hash): hash is string => Boolean(hash));
+            return <article key={passport.passportId} className="border-t border-border py-5"><div className="meta">{passport.passportId}</div><h2 className="mt-3 font-display text-xl">{listing?.title || (passport.brand + " " + passport.model)}</h2><p className="meta mt-2">{listing ? listing.status.replace(/_/g, " ") + " · " + formatPrice(listing.price, listing.currency) : "Passport only"}</p>{listing?.buyerWallet && <p className="meta mt-3 break-all">Paid by buyer · {listing.buyerWallet}</p>}<a href={product ? "/product/" + encodeURIComponent(product.id) : "/passport/" + encodeURIComponent(passport.passportId)} className="meta mt-5 inline-block text-primary underline">{product ? "View listing" : "View passport"}</a>{transactions.length ? <div className="mt-5 border-t border-border pt-4"><p className="meta text-foreground">MST Testnet · {transactions.length} confirmed transaction{transactions.length === 1 ? "" : "s"}</p><ul className="mt-3 space-y-2">{transactions.map((hash, index) => <li key={hash}><a className="meta text-primary underline" href={`https://testnet.mstscan.com/tx/${hash}`} target="_blank" rel="noreferrer">Transaction {index + 1} · {hash.slice(0, 10)}…{hash.slice(-6)}</a></li>)}</ul></div> : null}<OwnershipTransferStart passportId={passport.passportId} sellerWallet={user.walletAddress} initialBuyer={listing?.buyerWallet} /></article>;
           })}
         </div>}
     </section>
   );
 }
 
-function OwnershipTransferStart({ passportId, sellerWallet }: { passportId: string; sellerWallet: string }) {
-  const [buyer, setBuyer] = useState("");
+function OwnershipTransferStart({ passportId, sellerWallet, initialBuyer = "" }: { passportId: string; sellerWallet: string; initialBuyer?: string }) {
+  const [buyer, setBuyer] = useState(initialBuyer);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const start = async () => {

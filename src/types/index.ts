@@ -214,12 +214,14 @@ export interface MarketplaceListing {
     sellerId: string;
     buyerId?: string;
     mstTxHash?: string;
+    paymentTxHash?: string;
+    buyerWallet?: string;
     sellerName: string;
     sellerWallet?: string;
     sellerReputation: number;
     sellerDid: string;
-    price: number; // In INR or USD
-    currency: 'INR' | 'USD';
+    price: number;
+    currency: 'INR' | 'USD' | 'TMSTC';
     location: string;
     title: string;
     description: string;

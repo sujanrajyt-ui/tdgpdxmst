@@ -7,7 +7,7 @@ import { ReloreProductPage, RelorePassportPage } from "@/views/RelorePages";
 import { ReloreWorkspacePage, type ListingDraft } from "@/views/ReloreWorkspacePages";
 import { formatPrice, products as previewProducts, type Product } from "@/lib/relore-market-data";
 import { toReloreProducts } from "@/core/relore-mapping";
-import { applyToSell, createListingRecord, createPassportRecord, getAdminReviewQueue, getMyMarketplace, getPublicMarketplace, getWalletSession, reviewListing, reviewSeller, signInWithWallet, signOutFromApi, updateProfile, type AdminReviewQueue, type ApiUser } from "@/core/api";
+import { createListingRecord, createPassportRecord, getAdminReviewQueue, getMyMarketplace, getPublicMarketplace, getWalletSession, reviewListing, reviewSeller, signInWithWallet, signOutFromApi, updateProfile, type AdminReviewQueue, type ApiUser } from "@/core/api";
 import type { MarketplaceListing, ProductPassport } from "@/types";
 import { connectWallet } from "@/core/mst/wallet";
 import { MSTAnchorService } from "@/core/mst/anchorService";
@@ -63,23 +63,6 @@ export function ReloreApp() {
     }
   }, []);
 
-  const refreshSellerStatus = async () => {
-    setBusy(true); setActionMessage("");
-    try {
-      const account = await getWalletSession();
-      if (!account) throw new Error("Your wallet session expired. Connect and sign in again.");
-      setUser(account);
-      await refreshPrivate(account);
-      setActionMessage(account.sellerStatus === "APPROVED" || account.role === "ADMIN"
-        ? "Seller access is approved. You can add your product below."
-        : account.sellerStatus === "REJECTED"
-          ? "The application was declined. You can update your details and apply again."
-          : "Your seller application is still waiting for admin review.");
-    } catch (error) {
-      setActionMessage(error instanceof Error ? error.message : "Could not check seller application status.");
-    } finally { setBusy(false); }
-  };
-
   useEffect(() => {
     const onPopState = () => setPage(parsePage());
     window.addEventListener("popstate", onPopState);
@@ -117,16 +100,6 @@ export function ReloreApp() {
     } finally {
       setBusy(false);
     }
-  };
-
-  const submitApplication = async (businessName: string) => {
-    setBusy(true); setActionMessage("");
-    try {
-      await applyToSell(businessName);
-      const account = await getWalletSession();
-      setUser(account);
-      setActionMessage("Application submitted for admin review.");
-    } finally { setBusy(false); }
   };
 
   const publish = async (draft: ListingDraft) => {
@@ -196,7 +169,7 @@ export function ReloreApp() {
       {page.kind === "home" ? <main><Hero product={items[0]} />{loadError && import.meta.env.PROD && <p role="status" className="meta mx-auto max-w-[1600px] px-5 pt-5 sm:px-8">Marketplace data is temporarily unavailable.</p>}<Marketplace products={items} /></main>
         : page.kind === "product" && pageProduct ? <ReloreProductPage product={pageProduct} related={items.filter((product) => product.id !== pageProduct.id).slice(0, 3)} />
         : page.kind === "passport" && pageProduct ? <RelorePassportPage product={pageProduct} />
-        : page.kind === "workspace" ? <ReloreWorkspacePage route={page.section} user={user} busy={busy} message={actionMessage} onConnect={connect} onRefreshSellerStatus={refreshSellerStatus} onApply={submitApplication} onPublish={publish} onSaveName={saveName} onSignOut={signOut} passports={myPassports} listings={myListings} previewItems={items} />
+        : page.kind === "workspace" ? <ReloreWorkspacePage route={page.section} user={user} busy={busy} message={actionMessage} onConnect={connect} onPublish={publish} onSaveName={saveName} onSignOut={signOut} passports={myPassports} listings={myListings} previewItems={items} />
         : page.kind === "admin" ? <AdminPage user={user} queue={queue} onReviewSeller={onReviewSeller} onReviewListing={onReviewListing} onConnect={connect} />
         : <NotFoundPage />}
       <Footer />

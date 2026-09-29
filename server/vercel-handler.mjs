@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { getAddress, verifyMessage } from 'ethers';
 import { neon } from '@neondatabase/serverless';
+import { isValidTmstcPrice, verifyDirectTmstcPayment } from './tmstc-payments.mjs';
 
 // Marketplace integrations expose slightly different variable names. Prefer
 // DATABASE_URL, while accepting common Postgres/Neon aliases as well.
@@ -57,6 +58,8 @@ async function ready() {
   if (!sql) throw Object.assign(new Error('No Postgres connection string is available to this deployment. Check the database integration’s environment variable name and Production/Preview scope, then redeploy.'), { status: 503 });
   if (!schemaReady) schemaReady = (async () => {
     for (const statement of schema) await sql.query(statement, []);
+    await sql.query("UPDATE seller_applications SET status='APPROVED',reviewed_at=COALESCE(reviewed_at,submitted_at) WHERE status='PENDING'", []);
+    await sql.query("UPDATE users SET role=CASE WHEN role='ADMIN' THEN role ELSE 'SELLER' END,seller_status='APPROVED' WHERE seller_status!='APPROVED' OR role NOT IN ('ADMIN','SELLER')", []);
   })();
   try { await schemaReady; } catch (error) { schemaReady = undefined; throw error; }
 }
@@ -154,7 +157,7 @@ async function route(req, res) {
   if (method === 'OPTIONS') { res.writeHead(204, { allow: 'GET,POST,PATCH,DELETE,OPTIONS' }); res.end(); return; }
 
   if (method === 'GET' && path === '/api/health') {
-    return send(res, 200, { status: 'ok', database: 'postgres', chainId: 91562037, payments: 'not_configured', contracts: Boolean(process.env.MST_PRODUCT_PASSPORT_REGISTRY && process.env.MST_OWNERSHIP_REGISTRY) });
+    return send(res, 200, { status: 'ok', database: 'postgres', chainId: 91562037, payments: 'tmstc_direct_testnet', contracts: Boolean(process.env.MST_PRODUCT_PASSPORT_REGISTRY && process.env.MST_OWNERSHIP_REGISTRY) });
   }
 
   if (method === 'POST' && path === '/api/auth/nonce') {
@@ -183,9 +186,9 @@ async function route(req, res) {
     await sql.query('DELETE FROM challenges WHERE wallet_address=$1', [wallet]);
     const timestamp = now();
     const id = `wallet:${wallet.toLowerCase()}`;
-    const initialRole = admins.has(wallet.toLowerCase()) ? 'ADMIN' : 'CONSUMER';
-    await sql.query(`INSERT INTO users(id,wallet_address,role,created_at,updated_at) VALUES($1,$2,$3,$4,$4)
-      ON CONFLICT(wallet_address) DO UPDATE SET role=CASE WHEN EXCLUDED.role='ADMIN' THEN 'ADMIN' ELSE users.role END,updated_at=EXCLUDED.updated_at`, [id, wallet, initialRole, timestamp]);
+    const initialRole = admins.has(wallet.toLowerCase()) ? 'ADMIN' : 'SELLER';
+    await sql.query(`INSERT INTO users(id,wallet_address,role,seller_status,created_at,updated_at) VALUES($1,$2,$3,'APPROVED',$4,$4)
+      ON CONFLICT(wallet_address) DO UPDATE SET role=CASE WHEN EXCLUDED.role='ADMIN' THEN 'ADMIN' ELSE 'SELLER' END,seller_status='APPROVED',updated_at=EXCLUDED.updated_at`, [id, wallet, initialRole, timestamp]);
     const [user] = await sql.query('SELECT * FROM users WHERE wallet_address=$1 LIMIT 1', [wallet]);
     const token = randomBytes(32).toString('base64url');
     const expiresAt = Date.now() + sessionHours * 60 * 60_000;
@@ -214,11 +217,12 @@ async function route(req, res) {
   if (method === 'POST' && path === '/api/seller-applications') {
     const user = await requireUser(req, res); if (!user) return;
     const business = validateText((await readJson(req)).businessName, 'Business name', 120);
-    await sql.query(`INSERT INTO seller_applications(wallet_address,business_name,status,submitted_at) VALUES($1,$2,'PENDING',$3)
-      ON CONFLICT(wallet_address) DO UPDATE SET business_name=EXCLUDED.business_name,status='PENDING',submitted_at=EXCLUDED.submitted_at,reviewed_at=NULL`, [user.wallet_address, business, now()]);
-    await sql.query('UPDATE users SET seller_status=$1,updated_at=$2 WHERE id=$3', ['PENDING', now(), user.id]);
-    await audit(user, 'SELLER_APPLICATION_SUBMITTED', user.wallet_address);
-    return send(res, 201, { status: 'PENDING' });
+    const submittedAt = now();
+    await sql.query(`INSERT INTO seller_applications(wallet_address,business_name,status,submitted_at,reviewed_at) VALUES($1,$2,'APPROVED',$3,$3)
+      ON CONFLICT(wallet_address) DO UPDATE SET business_name=EXCLUDED.business_name,status='APPROVED',submitted_at=EXCLUDED.submitted_at,reviewed_at=EXCLUDED.reviewed_at`, [user.wallet_address, business, submittedAt]);
+    await sql.query("UPDATE users SET role=CASE WHEN role='ADMIN' THEN role ELSE 'SELLER' END,seller_status='APPROVED',updated_at=$1 WHERE id=$2", [submittedAt, user.id]);
+    await audit(user, 'SELLER_AUTO_APPROVED', user.wallet_address);
+    return send(res, 200, { status: 'APPROVED' });
   }
 
   if (method === 'GET' && path === '/api/listings') {
@@ -293,7 +297,7 @@ async function route(req, res) {
     const [active] = await sql.query("SELECT 1 FROM listings WHERE passport_id=$1 AND status IN ('ACTIVE','PENDING_REVIEW','RESERVED') LIMIT 1", [passportId]);
     if (active) return send(res, 409, { error: 'active_listing_exists' });
     const price = Number(body.price);
-    if (!Number.isSafeInteger(price) || price < 1 || price > 10_000_000_000) return send(res, 400, { error: 'invalid_price', message: 'Price must be an integer number of rupees.' });
+    if (!isValidTmstcPrice(body.price)) return send(res, 400, { error: 'invalid_price', message: 'Price must be between 0.000001 and 1,000,000 tMSTC, with up to 6 decimal places.' });
     const listingId = `LST-${randomBytes(5).toString('hex').toUpperCase()}`;
     const createdAt = now();
     const listing = {
@@ -301,7 +305,7 @@ async function route(req, res) {
       sellerName: user.display_name || `MST user ${user.wallet_address.slice(-4)}`, sellerReputation: 0,
       sellerDid: `did:mst:wallet:${user.wallet_address.toLowerCase()}`,
       title: validateText(body.title, 'Title', 160), description: String(body.description || '').trim().slice(0, 4000),
-      price, currency: 'INR', location: validateText(body.location, 'Location', 120), status: 'PENDING_REVIEW', listedAt: createdAt, createdAt,
+      price, currency: 'TMSTC', location: validateText(body.location, 'Location', 120), status: 'PENDING_REVIEW', listedAt: createdAt, createdAt,
       mstTxHash: /^0x[0-9a-fA-F]{64}$/.test(String(body.mstTxHash || '')) ? body.mstTxHash : '',
     };
     await sql.query('INSERT INTO listings(listing_id,passport_id,seller_wallet,status,payload_json,created_at,updated_at) VALUES($1,$2,$3,$4,$5::jsonb,$6,$6)', [listingId, passportId, user.wallet_address, listing.status, JSON.stringify(listing), createdAt]);
@@ -352,7 +356,59 @@ async function route(req, res) {
 
   if (method === 'POST' && path === '/api/orders') {
     const user = await requireUser(req, res); if (!user) return;
-    return send(res, 503, { error: 'payments_not_configured', message: 'Checkout is unavailable until a payment provider is configured.' });
+    const listingId = validateText((await readJson(req)).listingId, 'Listing ID', 40);
+    const [row] = await sql.query('SELECT * FROM listings WHERE listing_id=$1 LIMIT 1', [listingId]);
+    if (!row) return send(res, 404, { error: 'listing_not_found' });
+    if (row.status !== 'ACTIVE') return send(res, 409, { error: 'listing_unavailable', message: 'This object is no longer available to buy.' });
+    const listing = row.payload_json;
+    if (listing.currency !== 'TMSTC') return send(res, 400, { error: 'unsupported_currency', message: 'This listing is not priced in tMSTC.' });
+    if (row.seller_wallet.toLowerCase() === user.wallet_address.toLowerCase()) return send(res, 400, { error: 'self_purchase', message: 'You cannot buy your own listing.' });
+    const orderId = `ORD-${randomBytes(6).toString('hex').toUpperCase()}`;
+    const timestamp = now();
+    const reserved = { ...listing, status: 'RESERVED' };
+    const [claimed] = await sql.query("UPDATE listings SET status='RESERVED',payload_json=$1::jsonb,updated_at=$2 WHERE listing_id=$3 AND status='ACTIVE' RETURNING listing_id", [JSON.stringify(reserved), timestamp, listingId]);
+    if (!claimed) return send(res, 409, { error: 'listing_unavailable', message: 'Another buyer has reserved this object.' });
+    await sql.query('INSERT INTO orders(order_id,listing_id,buyer_wallet,seller_wallet,status,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$6)', [orderId, listingId, user.wallet_address, row.seller_wallet, 'PAYMENT_PENDING', timestamp]);
+    await audit(user, 'TMSTC_PAYMENT_STARTED', orderId);
+    return send(res, 201, { order: { id: orderId, listingId, sellerWallet: row.seller_wallet, price: listing.price, currency: 'TMSTC', status: 'PAYMENT_PENDING' } });
+  }
+
+  const tmstcOrderMatch = path.match(/^\/api\/orders\/(ORD-[A-F0-9]{12})$/);
+  if (tmstcOrderMatch && method === 'PATCH') {
+    const user = await requireUser(req, res); if (!user) return;
+    const [order] = await sql.query('SELECT * FROM orders WHERE order_id=$1 LIMIT 1', [tmstcOrderMatch[1]]);
+    if (!order) return send(res, 404, { error: 'order_not_found' });
+    if (order.buyer_wallet.toLowerCase() !== user.wallet_address.toLowerCase()) return forbidden(res);
+    if (order.status !== 'PAYMENT_PENDING') return send(res, 409, { error: 'order_not_pending' });
+    const [listingRow] = await sql.query('SELECT payload_json FROM listings WHERE listing_id=$1 LIMIT 1', [order.listing_id]);
+    if (!listingRow) return send(res, 404, { error: 'listing_not_found' });
+    const listing = listingRow.payload_json;
+    const body = await readJson(req);
+    const receipt = await verifyDirectTmstcPayment(body.txHash, order.buyer_wallet, order.seller_wallet, listing.price);
+    const timestamp = now();
+    listing.status = 'PENDING_TRANSFER';
+    listing.buyerWallet = order.buyer_wallet;
+    listing.paymentTxHash = receipt.hash;
+    await sql.query('UPDATE orders SET status=$1,payment_reference=$2,updated_at=$3 WHERE order_id=$4', ['PAID_AWAITING_TRANSFER', receipt.hash, timestamp, order.order_id]);
+    await sql.query('UPDATE listings SET status=$1,payload_json=$2::jsonb,updated_at=$3 WHERE listing_id=$4', [listing.status, JSON.stringify(listing), timestamp, order.listing_id]);
+    await audit(user, 'TMSTC_PAYMENT_CONFIRMED', order.order_id);
+    return send(res, 200, { orderId: order.order_id, status: 'PAID_AWAITING_TRANSFER', txHash: receipt.hash, blockNumber: receipt.blockNumber });
+  }
+  if (tmstcOrderMatch && method === 'DELETE') {
+    const user = await requireUser(req, res); if (!user) return;
+    const [order] = await sql.query('SELECT * FROM orders WHERE order_id=$1 LIMIT 1', [tmstcOrderMatch[1]]);
+    if (!order) return send(res, 404, { error: 'order_not_found' });
+    if (order.buyer_wallet.toLowerCase() !== user.wallet_address.toLowerCase()) return forbidden(res);
+    if (order.status !== 'PAYMENT_PENDING' || order.payment_reference) return send(res, 409, { error: 'order_cannot_be_cancelled' });
+    const timestamp = now();
+    const [listingRow] = await sql.query('SELECT payload_json,status FROM listings WHERE listing_id=$1 LIMIT 1', [order.listing_id]);
+    if (listingRow?.status === 'RESERVED') {
+      const listing = listingRow.payload_json;
+      listing.status = 'ACTIVE';
+      await sql.query('UPDATE listings SET status=$1,payload_json=$2::jsonb,updated_at=$3 WHERE listing_id=$4', ['ACTIVE', JSON.stringify(listing), timestamp, order.listing_id]);
+    }
+    await sql.query('UPDATE orders SET status=$1,updated_at=$2 WHERE order_id=$3', ['CANCELLED', timestamp, order.order_id]);
+    return send(res, 200, { status: 'CANCELLED' });
   }
 
   if (method === 'POST' && path === '/api/evidence') {
