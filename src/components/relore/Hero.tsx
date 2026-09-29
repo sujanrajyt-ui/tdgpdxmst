@@ -47,7 +47,9 @@ export function Hero({ product }: { product?: Product }) {
   if (reduced) return <StaticHero />;
 
   const intro = seg(p, 0, 0.22);
-  const open = seg(p, 0.28, 0.6);
+  // Reach the fully open image early so a normal trackpad/wheel scroll doesn't
+  // strand the transition halfway between the two stills.
+  const open = seg(p, 0.06, 0.24);
   const used = seg(p, 0.25, 0.4);
   const reported = seg(p, 0.38, 0.53);
   const recorded = seg(p, 0.51, 0.66);
@@ -58,7 +60,7 @@ export function Hero({ product }: { product?: Product }) {
   const laptopScale = 0.94 + seg(p, 0, 0.5) * 0.1 + next * 0.02;
   const laptopY = -intro * 1 - seg(p, 0.75, 1) * 3;
   const laptopX = next * -4;
-  const laptopRot = 4 - seg(p, 0.18, 0.6) * 4;
+  const laptopRot = 4 - seg(p, 0.02, 0.24) * 4;
   const passportRows = [
     ["Object", product?.objectId ?? "—"],
     ["Condition", product?.condition ?? "—"],
@@ -218,8 +220,8 @@ function StaticHero() {
   return (
     <section className="grain relative flex min-h-[80vh] items-center justify-center overflow-hidden px-5">
       <img
-        src={closedLaptop}
-        alt="A closed laptop in a dark studio"
+        src={openLaptop}
+        alt="An open laptop in a dark studio"
         width={1536}
         height={1024}
         className="absolute w-[min(92vw,1000px)] opacity-70"
