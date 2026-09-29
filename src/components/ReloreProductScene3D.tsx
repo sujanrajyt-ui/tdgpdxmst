@@ -26,7 +26,7 @@ function MacbookModel() {
         return copy;
     }, [scene]);
 
-    return <primitive object={model} position={[0, -0.3, 0]} rotation={[Math.PI / 2, Math.PI, 0]} scale={0.06} dispose={null} />;
+    return <primitive object={model} position={[0, -0.1, 0]} rotation={[Math.PI / 2, Math.PI, 0]} scale={0.09} dispose={null} />;
 }
 
 function ProductRig({ scrollProgress, children }: { scrollProgress: React.MutableRefObject<number>; children: React.ReactNode }) {
@@ -137,8 +137,8 @@ function SvgLaptopFallback() {
             const laptop = source.clone(true);
             laptop.rotation.x = Math.PI / 2;
             laptop.rotation.y = Math.PI;
-            laptop.position.y = -0.3;
-            laptop.scale.setScalar(0.06);
+            laptop.position.y = -0.1;
+            laptop.scale.setScalar(0.09);
             laptop.traverse(object => {
                 if (!(object instanceof THREE.Mesh)) return;
                 object.material = Array.isArray(object.material)

@@ -1,5 +1,5 @@
 import React, { Suspense, useState } from 'react';
-import { ArrowRight, Search, ShieldCheck, Tag } from 'lucide-react';
+import { ArrowDown, ArrowRight, Search, ShieldCheck, Tag } from 'lucide-react';
 import { AppStore } from '../core/store';
 import { ProductCardZayq } from '../components/ProductCardZayq';
 import { ScrollReveal } from '../components/ScrollReveal';
@@ -25,13 +25,14 @@ export const LandingView: React.FC<Props> = ({ onNavigate }) => {
         <div className="shop-home">
             <section className="shop-home-hero">
                 <div className="shop-home-copy">
-                    <span className="shop-home-eyebrow"><ShieldCheck size={15} /> PRE-OWNED TECH, WITH ITS HISTORY</span>
-                    <h1>Good devices deserve another life.</h1>
+                    <span className="shop-home-eyebrow"><ShieldCheck size={15} /> RELORE · VERIFIED PRE-OWNED TECH</span>
+                    <h1>Good devices.<br /><em>Another life.</em></h1>
                     <p>Explore pre-owned electronics and check each product passport for saved ownership, service, and inspection records.</p>
                     <div className="shop-home-actions">
                         <button onClick={() => onNavigate('marketplace')} className="shop-buy-button">Shop electronics <ArrowRight size={15} /></button>
                         <button onClick={() => onNavigate('create-passport')} className="shop-home-sell"><Tag size={15} /> Sell with Relore</button>
                     </div>
+                    <div className="shop-home-scroll-cue"><span>SCROLL TO TURN THE PRODUCT</span><ArrowDown size={15} /></div>
                 </div>
                 {heroListing && heroPassport && <div className="shop-home-showcase">
                     <div className="shop-home-product-stage" aria-label={`Interactive 3D preview of a laptop. Featured listing: ${heroListing.title}`}>
