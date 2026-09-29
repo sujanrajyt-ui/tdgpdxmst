@@ -8,6 +8,7 @@ type WorkspaceProps = {
   busy: boolean;
   message: string;
   onConnect: () => void;
+  onRefreshSellerStatus: () => void;
   onApply: (businessName: string) => Promise<void>;
   onPublish: (draft: ListingDraft) => Promise<void>;
   onSaveName: (name: string) => Promise<void>;
@@ -37,7 +38,7 @@ export function ReloreWorkspacePage({ route, ...props }: WorkspaceProps & { rout
   );
 }
 
-function SellPage({ user, busy, message, onConnect, onApply, onPublish }: WorkspaceProps) {
+function SellPage({ user, busy, message, onConnect, onRefreshSellerStatus, onApply, onPublish }: WorkspaceProps) {
   const [businessName, setBusinessName] = useState("");
   const [category, setCategory] = useState<ProductCategory>("LAPTOP");
   const [brand, setBrand] = useState("");
@@ -70,7 +71,7 @@ function SellPage({ user, busy, message, onConnect, onApply, onPublish }: Worksp
         <form onSubmit={submitApply} className="mt-12 space-y-6 border-t border-border pt-8">
           <h2 className="meta text-foreground">Seller application</h2>
           <Field label="Business or seller name"><input value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Individual seller" maxLength={120} /></Field>
-          {user.sellerStatus === "PENDING" ? <p className="meta">Your seller application is waiting for review.</p> : user.sellerStatus === "REJECTED" ? <p className="meta">Your last application was declined. You can submit an updated application.</p> : null}
+          {user.sellerStatus === "PENDING" ? <div><p className="meta">Your seller application is waiting for admin review. Once approved, check your status here to unlock product listing.</p><button type="button" disabled={busy} onClick={onRefreshSellerStatus} className="meta mt-4 border border-border px-5 py-3 text-foreground disabled:opacity-60">{busy ? "Checking…" : "Check application status"}</button></div> : user.sellerStatus === "REJECTED" ? <p className="meta">Your last application was declined. You can submit an updated application.</p> : null}
           {user.sellerStatus !== "PENDING" && <button disabled={busy} className="meta bg-primary px-6 py-4 text-primary-foreground disabled:opacity-60">{busy ? "Submitting…" : "Apply to sell"}</button>}
         </form>
       ) : (
