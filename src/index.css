@@ -289,23 +289,34 @@ button.bg-gradient-to-r.from-cyan-500.to-blue-500 { background-image:linear-grad
 .zayq-input:focus,.market-active-search:focus-within { border-color:#45644e!important;box-shadow:0 0 0 2px #45644e33!important; }
 @media (max-width: 700px) { .app-main { padding-top:145px!important; } }
 .shop-home { max-width:1390px;margin:0 auto;padding:27px 24px 48px; }
-.shop-home-hero { display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,390px);gap:34px;align-items:center;padding:30px 32px;background:#fff;border:1px solid #d5d9d9;border-radius:7px; }
+.shop-home-hero { display:grid;grid-template-columns:minmax(0,1fr) minmax(350px,.9fr);gap:34px;align-items:center;padding:30px 32px;background:#fff;border:1px solid #d5d9d9;border-radius:7px; }
 .shop-home-copy { max-width:700px; }
 .shop-home-eyebrow { display:inline-flex;align-items:center;gap:7px;color:#315c42;font-size:10px;font-weight:700;letter-spacing:.08em; }
-.shop-home-copy h1 { max-width:660px;margin:13px 0 10px;color:#172033;font-size:34px;font-weight:700;line-height:1.18;letter-spacing:-.7px; }
+.shop-home-copy h1 { max-width:660px;margin:13px 0 10px;color:#17231d;font-size:clamp(34px,4vw,52px);font-weight:650;line-height:1.08;letter-spacing:-1.5px; }
 .shop-home-copy p { max-width:650px;margin:0;color:#5e6b79;font-size:14px;line-height:1.6; }
 .shop-home-actions { display:flex;align-items:center;flex-wrap:wrap;gap:11px;margin-top:21px; }
 .shop-home-actions .shop-buy-button { gap:9px;padding:0 17px; }
 .shop-home-sell { min-height:34px;display:flex;align-items:center;gap:7px;padding:0 12px;border:1px solid #bcc5ce;border-radius:18px;color:#243345;font-size:11px;font-weight:600; }
 .shop-home-sell:hover { background:#f3f5f5; }
-.shop-home-verify { padding:16px;background:#f7f8f8;border:1px solid #d5d9d9;border-radius:6px; }
+.shop-home-showcase { min-width:0; }
+.shop-home-product-stage { position:relative;width:100%;height:282px;display:grid;place-items:center;overflow:hidden;perspective:1000px;background:radial-gradient(ellipse at 48% 46%,#e5eee6 0,#f6f8f4 48%,#fff 78%);border:1px solid #e4e9e3;border-radius:10px; }
+.shop-home-product-stage::after { position:absolute;right:12%;bottom:16%;left:12%;height:12%;border-radius:50%;background:#17231d20;filter:blur(17px);content:""; }
+.shop-home-stage-glow { position:absolute;width:64%;aspect-ratio:1;border-radius:50%;background:#dce9df88;filter:blur(30px); }
+.shop-home-product-stage img { position:relative;z-index:1;width:93%;height:84%;object-fit:contain;mix-blend-mode:multiply;filter:drop-shadow(0 24px 20px #15231926);transition:transform 160ms ease-out;transform-style:preserve-3d; }
+.shop-home-stage-passport { position:absolute;z-index:2;left:14px;bottom:13px;display:flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid #cfdbd0;border-radius:20px;background:#fff;color:#244a36;font-size:10px;font-weight:700;box-shadow:0 3px 12px #17231d12; }
+.shop-home-showcase-caption { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;align-items:center;padding:12px 2px 0; }
+.shop-home-showcase-caption>span { grid-column:1/-1;color:#667669;font-size:9px;font-weight:700;letter-spacing:.09em; }
+.shop-home-showcase-caption>strong { overflow:hidden;color:#17231d;font-size:12px;text-overflow:ellipsis;white-space:nowrap; }
+.shop-home-showcase-caption>button { display:flex;align-items:center;gap:5px;color:#315c42;font-size:10px;font-weight:700;white-space:nowrap; }
+.shop-home-verify { display:grid;grid-template-columns:minmax(190px,.8fr) minmax(280px,1.2fr);align-items:center;gap:5px 20px;margin-top:15px;padding:14px 18px;background:#f7f8f5;border:1px solid #d5d9d9;border-radius:7px; }
+.shop-home-verify-copy { display:grid;gap:4px; }
 .shop-home-verify strong,.shop-home-verify span { display:block; }
 .shop-home-verify strong { color:#172033;font-size:14px; }
-.shop-home-verify>span { margin-top:4px;color:#687584;font-size:11px; }
-.shop-home-verify>div { height:39px;display:flex;align-items:center;gap:8px;margin-top:13px;padding-left:10px;border:1px solid #aab4bf;border-radius:5px;background:#fff;color:#65717d; }
-.shop-home-verify input { flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;color:#172033;font-size:11px; }
-.shop-home-verify>div button { align-self:stretch;padding:0 12px;background:#244a36;border-radius:0 4px 4px 0;color:#fff;font-size:11px;font-weight:700; }
-.shop-home-verify small { display:block;margin-top:9px;color:#71808d;font-size:10px; }
+.shop-home-verify-copy span { margin:0;color:#687584;font-size:11px;line-height:1.4; }
+.shop-home-verify-field { height:39px;display:flex;align-items:center;gap:8px;padding-left:10px;border:1px solid #aab4bf;border-radius:5px;background:#fff;color:#65717d; }
+.shop-home-verify-field input { flex:1;min-width:0;height:100%;border:0;outline:0;background:transparent;color:#172033;font-size:11px; }
+.shop-home-verify-field button { align-self:stretch;padding:0 12px;background:#244a36;border-radius:0 4px 4px 0;color:#fff;font-size:11px;font-weight:700; }
+.shop-home-verify small { grid-column:2;display:block;margin-top:0;color:#71808d;font-size:10px; }
 .shop-home-verify small button { color:#315c42;text-decoration:underline; }
 .shop-home-featured { margin-top:30px; }
 .shop-home-section-title { display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:13px; }
@@ -323,7 +334,11 @@ button.bg-gradient-to-r.from-cyan-500.to-blue-500 { background-image:linear-grad
   .shop-home-hero { grid-template-columns:1fr;gap:20px;padding:20px 16px; }
   .shop-home-copy h1 { margin-top:10px;font-size:26px; }
   .shop-home-copy p { font-size:12px; }
-  .shop-home-verify { padding:13px; }
+  .shop-home-product-stage { height:220px; }
+  .shop-home-showcase-caption { grid-template-columns:minmax(0,1fr); }
+  .shop-home-showcase-caption>button { margin-top:4px; }
+  .shop-home-verify { grid-template-columns:1fr;gap:10px;padding:13px; }
+  .shop-home-verify small { grid-column:1; }
   .shop-home-featured { margin-top:23px; }
   .shop-home-section-title h2 { font-size:18px; }
   .shop-home-section-title>button { font-size:10px; }
